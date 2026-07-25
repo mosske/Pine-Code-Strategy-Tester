@@ -1,6 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Candle, IndicatorOverlay, TradeLogItem } from '../types';
-import { Eye, EyeOff, Maximize2, RefreshCw, ZoomIn, ZoomOut, Info } from 'lucide-react';
+import { 
+  Eye, 
+  EyeOff, 
+  ZoomIn, 
+  ZoomOut, 
+  Info, 
+  ChevronLeft, 
+  ChevronRight, 
+  SkipBack, 
+  SkipForward, 
+  Target, 
+  ShieldAlert, 
+  ArrowUpRight, 
+  ArrowDownRight,
+  Crosshair,
+  Sliders
+} from 'lucide-react';
 
 interface StrategyChartProps {
   candles: Candle[];
@@ -23,20 +39,50 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
 }) => {
   // Chart view states
   const [visibleCount, setVisibleCount] = useState<number>(100);
+  const [scrollOffset, setScrollOffset] = useState<number>(0); // 0 = showing newest candles at the right
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [showSubchart, setShowSubchart] = useState<boolean>(true);
   const [showIndicators, setShowIndicators] = useState<boolean>(true);
   const [showTradesOnChart, setShowTradesOnChart] = useState<boolean>(true);
+  const [showTpSlLines, setShowTpSlLines] = useState<boolean>(true);
 
-  // Slice visible candles to show the latest `visibleCount` candles
+  // Drag & Touch panning & pinch zoom state
+  const isDraggingRef = useRef<boolean>(false);
+  const dragStartXRef = useRef<number>(0);
+  const dragStartOffsetRef = useRef<number>(0);
+  const touchPinchDistRef = useRef<number | null>(null);
+  const touchStartVisibleCountRef = useRef<number>(100);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // Maximum allowed scroll offset
+  const maxScroll = Math.max(0, candles.length - visibleCount);
+
+  // Ensure scrollOffset stays within bounds when candles or visibleCount change
+  useEffect(() => {
+    setScrollOffset((prev) => Math.min(Math.max(0, prev), Math.max(0, candles.length - visibleCount)));
+  }, [candles.length, visibleCount]);
+
+  // Auto-scroll to selected trade when selectedTradeId changes
+  useEffect(() => {
+    if (selectedTradeId) {
+      const trade = trades.find((t) => t.id === selectedTradeId);
+      if (trade) {
+        const midTradeIndex = Math.floor((trade.entryIndex + trade.exitIndex) / 2);
+        const targetOffset = Math.max(0, Math.min(candles.length - visibleCount, candles.length - (midTradeIndex + Math.floor(visibleCount / 2))));
+        setScrollOffset(targetOffset);
+      }
+    }
+  }, [selectedTradeId, trades, candles.length, visibleCount]);
+
+  // Calculate visible candles range
+  const endIndex = Math.min(candles.length, candles.length - scrollOffset);
+  const startIndex = Math.max(0, endIndex - visibleCount);
   const visibleCandles = useMemo(() => {
-    if (candles.length <= visibleCount) return candles;
-    return candles.slice(candles.length - visibleCount);
-  }, [candles, visibleCount]);
+    return candles.slice(startIndex, endIndex);
+  }, [candles, startIndex, endIndex]);
 
-  const startIndex = candles.length - visibleCandles.length;
-
-  // Find min and max price for main chart scaling
+  // Find min and max price for chart scaling
   const { minPrice, maxPrice, maxVolume } = useMemo(() => {
     if (visibleCandles.length === 0) return { minPrice: 0, maxPrice: 100, maxVolume: 1000 };
     let minP = Infinity;
@@ -49,11 +95,30 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
       if (c.volume > maxVol) maxVol = c.volume;
     });
 
-    // Also include indicator overlay values if present
+    // Also include TP and SL prices of selected trade if present
+    if (selectedTradeId) {
+      const selectedTrade = trades.find((t) => t.id === selectedTradeId);
+      if (selectedTrade) {
+        if (selectedTrade.takeProfitPrice) {
+          if (selectedTrade.takeProfitPrice < minP) minP = selectedTrade.takeProfitPrice;
+          if (selectedTrade.takeProfitPrice > maxP) maxP = selectedTrade.takeProfitPrice;
+        }
+        if (selectedTrade.stopLossPrice) {
+          if (selectedTrade.stopLossPrice < minP) minP = selectedTrade.stopLossPrice;
+          if (selectedTrade.stopLossPrice > maxP) maxP = selectedTrade.stopLossPrice;
+        }
+        if (selectedTrade.entryPrice) {
+          if (selectedTrade.entryPrice < minP) minP = selectedTrade.entryPrice;
+          if (selectedTrade.entryPrice > maxP) maxP = selectedTrade.entryPrice;
+        }
+      }
+    }
+
+    // Include indicator overlays
     if (showIndicators) {
       indicators.forEach((ind) => {
         if (!ind.isSubchart && ind.values) {
-          for (let i = startIndex; i < candles.length; i++) {
+          for (let i = startIndex; i < endIndex; i++) {
             const val = ind.values[i];
             if (val !== null && val !== undefined) {
               if (val < minP) minP = val;
@@ -70,18 +135,18 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
       maxPrice: maxP + padding,
       maxVolume: maxVol || 1000,
     };
-  }, [visibleCandles, indicators, showIndicators, startIndex, candles.length]);
+  }, [visibleCandles, indicators, showIndicators, startIndex, endIndex, selectedTradeId, trades]);
 
-  // Dimension constants for SVG layout
+  // Dimensions
   const svgWidth = 1000;
   const mainChartHeight = showSubchart ? 380 : 520;
   const subchartHeight = showSubchart ? 140 : 0;
   const totalSvgHeight = mainChartHeight + subchartHeight + 30;
 
-  const candleSlotWidth = svgWidth / visibleCandles.length;
+  const candleSlotWidth = visibleCandles.length > 0 ? svgWidth / visibleCandles.length : 10;
   const candleBodyWidth = Math.max(1.5, candleSlotWidth * 0.65);
 
-  // Helper coordinate mappers
+  // Coordinate helpers
   const getYCoordinate = (price: number): number => {
     const range = maxPrice - minPrice;
     if (range <= 0) return mainChartHeight / 2;
@@ -96,22 +161,133 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
     return topY + height - ((value - minVal) / range) * height;
   };
 
-  // Extract subchart indicators (e.g. RSI)
+  // Subchart RSI
   const rsiIndicator = useMemo(() => {
     return indicators.find((ind) => ind.isSubchart || ind.type === 'rsi');
   }, [indicators]);
 
-  // Find trades in visible range
+  // Find trades visible in current range
   const visibleTrades = useMemo(() => {
     if (!showTradesOnChart) return [];
     return trades.filter(
       (t) =>
-        (t.entryIndex >= startIndex && t.entryIndex < candles.length) ||
-        (t.exitIndex >= startIndex && t.exitIndex < candles.length)
+        (t.entryIndex >= startIndex && t.entryIndex < endIndex) ||
+        (t.exitIndex >= startIndex && t.exitIndex < endIndex)
     );
-  }, [trades, startIndex, candles.length, showTradesOnChart]);
+  }, [trades, startIndex, endIndex, showTradesOnChart]);
+
+  // Active trade details object
+  const selectedTrade = useMemo(() => {
+    return trades.find((t) => t.id === selectedTradeId) || null;
+  }, [trades, selectedTradeId]);
+
+  // Mouse & Touch Drag Handlers for Smooth Chart Sliding & Panning
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.clientX;
+    dragStartOffsetRef.current = scrollOffset;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const containerWidth = chartContainerRef.current?.clientWidth || svgRef.current?.clientWidth || 1000;
+    
+    // Update hoverIndex for tooltip if hovering
+    if (chartContainerRef.current) {
+      const rect = chartContainerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const candleIndex = Math.floor((mouseX / rect.width) * visibleCandles.length);
+      if (candleIndex >= 0 && candleIndex < visibleCandles.length) {
+        setHoverIndex(candleIndex);
+      }
+    }
+
+    if (!isDraggingRef.current) return;
+    const deltaX = e.clientX - dragStartXRef.current;
+    const pixelsPerBar = containerWidth / visibleCount;
+    const barsShift = Math.round(deltaX / (pixelsPerBar || 10));
+    const newOffset = Math.max(0, Math.min(maxScroll, dragStartOffsetRef.current + barsShift));
+    setScrollOffset(newOffset);
+  };
+
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
+  };
+
+  // Touch Handlers for Finger Sliding & Pinch Zoom
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      isDraggingRef.current = true;
+      dragStartXRef.current = e.touches[0].clientX;
+      dragStartOffsetRef.current = scrollOffset;
+      touchPinchDistRef.current = null;
+    } else if (e.touches.length === 2) {
+      isDraggingRef.current = false;
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      touchPinchDistRef.current = dist;
+      touchStartVisibleCountRef.current = visibleCount;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDraggingRef.current) {
+      const currentX = e.touches[0].clientX;
+      const deltaX = currentX - dragStartXRef.current;
+      const containerWidth = chartContainerRef.current?.clientWidth || svgRef.current?.clientWidth || 1000;
+      const pixelsPerBar = containerWidth / visibleCount;
+      const barsShift = Math.round(deltaX / (pixelsPerBar || 10));
+      const newOffset = Math.max(0, Math.min(maxScroll, dragStartOffsetRef.current + barsShift));
+      setScrollOffset(newOffset);
+
+      if (chartContainerRef.current) {
+        const rect = chartContainerRef.current.getBoundingClientRect();
+        const touchX = currentX - rect.left;
+        const candleIndex = Math.floor((touchX / rect.width) * visibleCandles.length);
+        if (candleIndex >= 0 && candleIndex < visibleCandles.length) {
+          setHoverIndex(candleIndex);
+        }
+      }
+    } else if (e.touches.length === 2 && touchPinchDistRef.current !== null) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const scale = touchPinchDistRef.current / currentDist;
+      const newVisible = Math.round(touchStartVisibleCountRef.current * scale);
+      setVisibleCount(Math.max(20, Math.min(candles.length, newVisible)));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    isDraggingRef.current = false;
+    touchPinchDistRef.current = null;
+    setHoverIndex(null);
+  };
+
+  // Wheel Handler for horizontal scrolling / zooming
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      // Zoom
+      if (e.deltaY < 0) {
+        setVisibleCount((prev) => Math.max(20, prev - 10));
+      } else {
+        setVisibleCount((prev) => Math.min(candles.length, prev + 10));
+      }
+    } else {
+      // Pan
+      const shift = e.deltaX !== 0 ? Math.sign(e.deltaX) * 5 : Math.sign(e.deltaY) * 5;
+      setScrollOffset((prev) => Math.max(0, Math.min(maxScroll, prev + shift)));
+    }
+  };
 
   const activeHoverCandle = hoverIndex !== null ? visibleCandles[hoverIndex] : visibleCandles[visibleCandles.length - 1];
+
+  const dateSpanText = useMemo(() => {
+    if (visibleCandles.length === 0) return '';
+    const firstDate = visibleCandles[0].time;
+    const lastDate = visibleCandles[visibleCandles.length - 1].time;
+    return `${firstDate} → ${lastDate}`;
+  }, [visibleCandles]);
 
   return (
     <div id="strategy-chart-container" className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col gap-3">
@@ -120,7 +296,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs">
         
         {/* Symbol & Active Candle Summary */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 font-bold text-slate-100">
             <span className="text-emerald-400 font-mono text-sm">{symbol}</span>
             <span className="text-slate-500 font-mono">· {timeframe}</span>
@@ -132,13 +308,49 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
               <span className="text-slate-400">H: <strong className="text-emerald-400">{activeHoverCandle.high}</strong></span>
               <span className="text-slate-400">L: <strong className="text-rose-400">{activeHoverCandle.low}</strong></span>
               <span className="text-slate-400">C: <strong className={activeHoverCandle.close >= activeHoverCandle.open ? 'text-emerald-400' : 'text-rose-400'}>{activeHoverCandle.close}</strong></span>
-              <span className="text-slate-400 hidden md:inline">Vol: <strong className="text-slate-300">{activeHoverCandle.volume.toLocaleString()}</strong></span>
+              <span className="text-slate-400 hidden lg:inline">Vol: <strong className="text-slate-300">{activeHoverCandle.volume.toLocaleString()}</strong></span>
             </div>
           )}
         </div>
 
-        {/* Visibility Toggles & Zoom */}
-        <div className="flex items-center gap-2">
+        {/* Trade Selector & Toggles */}
+        <div className="flex flex-wrap items-center gap-2">
+          
+          {/* Jump to Trade Dropdown Selector */}
+          {trades.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-emerald-400 font-semibold uppercase hidden sm:inline">Trade:</span>
+              <select
+                id="select-chart-trade-dropdown"
+                value={selectedTradeId || ''}
+                onChange={(e) => onSelectTrade?.(e.target.value)}
+                className="bg-slate-900 border border-emerald-600/50 text-emerald-300 font-mono text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 max-w-[180px] truncate"
+                title="Select trade to view Entry, Take Profit, and Stop Loss on chart"
+              >
+                <option value="">All Trades ({trades.length})</option>
+                {trades.map((t, idx) => (
+                  <option key={t.id} value={t.id}>
+                    #{idx + 1} {t.type} {t.pnlPercent >= 0 ? `+${t.pnlPercent}%` : `${t.pnlPercent}%`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Toggle TP & SL Lines */}
+          <button
+            onClick={() => setShowTpSlLines(!showTpSlLines)}
+            className={`flex items-center gap-1 px-2 py-1 rounded border text-[11px] font-medium transition ${
+              showTpSlLines
+                ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300'
+                : 'bg-slate-900 border-slate-800 text-slate-500'
+            }`}
+            title="Toggle Take Profit & Stop Loss target lines on chart"
+          >
+            <Target className="w-3 h-3 text-emerald-400" />
+            <span>TP/SL Targets</span>
+          </button>
+
           {/* Toggle Trades */}
           <button
             onClick={() => setShowTradesOnChart(!showTradesOnChart)}
@@ -147,7 +359,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                 ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300'
                 : 'bg-slate-900 border-slate-800 text-slate-500'
             }`}
-            title="Toggle Trade Entry/Exit Markers"
+            title="Toggle Trade Markers"
           >
             {showTradesOnChart ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
             <span>Trades ({trades.length})</span>
@@ -161,52 +373,90 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                 ? 'bg-blue-950/80 border-blue-700 text-blue-300'
                 : 'bg-slate-900 border-slate-800 text-slate-500'
             }`}
-            title="Toggle Overlay Indicators"
+            title="Toggle Indicators"
           >
             <span>Indicators</span>
           </button>
 
-          {/* Toggle Subchart */}
-          <button
-            onClick={() => setShowSubchart(!showSubchart)}
-            className={`flex items-center gap-1 px-2 py-1 rounded border text-[11px] transition ${
-              showSubchart
-                ? 'bg-purple-950/80 border-purple-700 text-purple-300'
-                : 'bg-slate-900 border-slate-800 text-slate-500'
-            }`}
-            title="Toggle Oscillator Subchart"
-          >
-            <span>RSI Subchart</span>
-          </button>
-
           {/* Zoom controls */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded p-0.5 ml-1">
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded p-0.5">
             <button
               onClick={() => setVisibleCount((prev) => Math.min(candles.length, prev + 30))}
               className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded"
-              title="Zoom Out (Show More Bars)"
+              title="Zoom Out"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="px-1.5 text-[10px] font-mono text-slate-400">{visibleCount} bars</span>
+            <span className="px-1 text-[10px] font-mono text-slate-400">{visibleCount}b</span>
             <button
-              onClick={() => setVisibleCount((prev) => Math.max(30, prev - 30))}
+              onClick={() => setVisibleCount((prev) => Math.max(20, prev - 20))}
               className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded"
-              title="Zoom In (Show Fewer Bars)"
+              title="Zoom In"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
           </div>
+
         </div>
 
       </div>
 
-      {/* SVG Canvas Area */}
-      <div className="relative w-full overflow-hidden rounded-lg bg-slate-950 border border-slate-800/80 shadow-inner">
+      {/* Selected Trade Info Banner */}
+      {selectedTrade && (
+        <div className="bg-emerald-950/40 border border-emerald-600/50 rounded-lg p-2.5 px-3.5 text-xs flex flex-wrap items-center justify-between gap-3 shadow-inner">
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded font-bold text-[10px] uppercase font-mono ${selectedTrade.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+              {selectedTrade.type} POSITION
+            </span>
+            <span className="font-semibold text-slate-200">
+              Entry: <strong className="font-mono text-slate-100">${selectedTrade.entryPrice}</strong> ({selectedTrade.entryTime})
+            </span>
+            <span className="text-slate-500">→</span>
+            <span className="font-semibold text-slate-200">
+              Exit: <strong className="font-mono text-slate-100">${selectedTrade.exitPrice}</strong> ({selectedTrade.exitTime})
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 font-mono">
+            {selectedTrade.takeProfitPrice && (
+              <span className="text-emerald-400 text-[11px] font-bold bg-emerald-900/40 border border-emerald-700/50 px-2 py-0.5 rounded">
+                TP Target: ${selectedTrade.takeProfitPrice}
+              </span>
+            )}
+            {selectedTrade.stopLossPrice && (
+              <span className="text-rose-400 text-[11px] font-bold bg-rose-900/40 border border-rose-700/50 px-2 py-0.5 rounded">
+                SL Level: ${selectedTrade.stopLossPrice}
+              </span>
+            )}
+            <span className={`font-bold text-sm ${selectedTrade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {selectedTrade.pnl >= 0 ? `+${selectedTrade.pnlPercent}% ($${selectedTrade.pnl})` : `${selectedTrade.pnlPercent}% ($${selectedTrade.pnl})`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* SVG Canvas Area with Drag to Pan, Finger Slide & Wheel/Pinch Zoom */}
+      <div 
+        ref={chartContainerRef}
+        className="relative w-full overflow-hidden rounded-lg bg-slate-950 border border-slate-800/80 shadow-inner cursor-grab active:cursor-grabbing touch-none select-none"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          handleMouseUp();
+          setHoverIndex(null);
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onWheel={handleWheel}
+        style={{ touchAction: 'none' }}
+      >
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${svgWidth} ${totalSvgHeight}`}
           className="w-full h-auto select-none"
-          onMouseLeave={() => setHoverIndex(null)}
         >
           <defs>
             <linearGradient id="bullishVolGrad" x1="0" y1="0" x2="0" y2="1">
@@ -217,10 +467,16 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
               <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
               <stop offset="100%" stopColor="#ef4444" stopOpacity="0.05" />
             </linearGradient>
+            <pattern id="tpPattern" width="6" height="6" patternUnits="userSpaceOnUse">
+              <line x1="0" y1="0" x2="6" y2="6" stroke="#10b981" strokeWidth="0.5" opacity="0.2" />
+            </pattern>
+            <pattern id="slPattern" width="6" height="6" patternUnits="userSpaceOnUse">
+              <line x1="0" y1="0" x2="6" y2="6" stroke="#ef4444" strokeWidth="0.5" opacity="0.2" />
+            </pattern>
           </defs>
 
-          {/* Horizontal Gridlines */}
-          {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
+          {/* Horizontal Gridlines & Price Scale */}
+          {[0.15, 0.35, 0.55, 0.75, 0.9].map((ratio, idx) => {
             const y = mainChartHeight * ratio;
             const priceVal = maxPrice - ratio * (maxPrice - minPrice);
             return (
@@ -228,14 +484,14 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                 <line
                   x1="0"
                   y1={y}
-                  x2={svgWidth - 60}
+                  x2={svgWidth - 65}
                   y2={y}
                   stroke="#1e293b"
                   strokeWidth="1"
                   strokeDasharray="4 4"
                 />
                 <text
-                  x={svgWidth - 52}
+                  x={svgWidth - 58}
                   y={y + 3}
                   fill="#64748b"
                   fontSize="10"
@@ -247,11 +503,151 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             );
           })}
 
-          {/* Volume Bars (rendered behind candles) */}
+          {/* Take Profit & Stop Loss Visual Target Overlay for Selected or Hovered Trade */}
+          {showTpSlLines && selectedTrade && (
+            <g key="tpsl-overlay">
+              {(() => {
+                const entryY = getYCoordinate(selectedTrade.entryPrice);
+                const tpY = selectedTrade.takeProfitPrice ? getYCoordinate(selectedTrade.takeProfitPrice) : null;
+                const slY = selectedTrade.stopLossPrice ? getYCoordinate(selectedTrade.stopLossPrice) : null;
+
+                const entryLocalIdx = selectedTrade.entryIndex - startIndex;
+                const exitLocalIdx = selectedTrade.exitIndex - startIndex;
+
+                const x1 = Math.max(0, entryLocalIdx * candleSlotWidth + candleSlotWidth / 2);
+                const x2 = Math.min(svgWidth - 65, (exitLocalIdx >= 0 ? exitLocalIdx : visibleCandles.length) * candleSlotWidth + candleSlotWidth / 2);
+
+                return (
+                  <>
+                    {/* Take Profit Target Zone & Line */}
+                    {tpY !== null && (
+                      <g key="tp-line">
+                        <rect
+                          x={x1}
+                          y={Math.min(entryY, tpY)}
+                          width={Math.max(40, x2 - x1)}
+                          height={Math.abs(entryY - tpY)}
+                          fill="#10b9811f"
+                          stroke="#10b98133"
+                          strokeWidth="1"
+                        />
+                        <line
+                          x1="0"
+                          y1={tpY}
+                          x2={svgWidth - 65}
+                          y2={tpY}
+                          stroke="#10b981"
+                          strokeWidth="1.75"
+                          strokeDasharray="5 3"
+                        />
+                        <rect
+                          x={svgWidth - 110}
+                          y={tpY - 10}
+                          width="105"
+                          height="20"
+                          fill="#064e3b"
+                          stroke="#10b981"
+                          rx="4"
+                        />
+                        <text
+                          x={svgWidth - 58}
+                          y={tpY + 3}
+                          fill="#34d399"
+                          fontSize="9"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                          textAnchor="middle"
+                        >
+                          TP: ${selectedTrade.takeProfitPrice}
+                        </text>
+                      </g>
+                    )}
+
+                    {/* Stop Loss Risk Zone & Line */}
+                    {slY !== null && (
+                      <g key="sl-line">
+                        <rect
+                          x={x1}
+                          y={Math.min(entryY, slY)}
+                          width={Math.max(40, x2 - x1)}
+                          height={Math.abs(entryY - slY)}
+                          fill="#ef44441f"
+                          stroke="#ef444433"
+                          strokeWidth="1"
+                        />
+                        <line
+                          x1="0"
+                          y1={slY}
+                          x2={svgWidth - 65}
+                          y2={slY}
+                          stroke="#ef4444"
+                          strokeWidth="1.75"
+                          strokeDasharray="5 3"
+                        />
+                        <rect
+                          x={svgWidth - 110}
+                          y={slY - 10}
+                          width="105"
+                          height="20"
+                          fill="#7f1d1d"
+                          stroke="#ef4444"
+                          rx="4"
+                        />
+                        <text
+                          x={svgWidth - 58}
+                          y={slY + 3}
+                          fill="#f87171"
+                          fontSize="9"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                          textAnchor="middle"
+                        >
+                          SL: ${selectedTrade.stopLossPrice}
+                        </text>
+                      </g>
+                    )}
+
+                    {/* Entry Price Line */}
+                    <line
+                      x1="0"
+                      y1={entryY}
+                      x2={svgWidth - 65}
+                      y2={entryY}
+                      stroke="#3b82f6"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 4"
+                    />
+                    <rect
+                      x={svgWidth - 110}
+                      y={entryY - 10}
+                      width="105"
+                      height="20"
+                      fill="#1e3a8a"
+                      stroke="#3b82f6"
+                      rx="4"
+                    />
+                    <text
+                      x={svgWidth - 58}
+                      y={entryY + 3}
+                      fill="#93c5fd"
+                      fontSize="9"
+                      fontWeight="bold"
+                      fontFamily="monospace"
+                      textAnchor="middle"
+                    >
+                      ENTRY: ${selectedTrade.entryPrice}
+                    </text>
+                  </>
+                );
+              })()}
+            </g>
+          )}
+
+          {/* Volume Bars */}
           {visibleCandles.map((c, idx) => {
             const x = idx * candleSlotWidth + candleSlotWidth / 2;
             const isBullish = c.close >= c.open;
-            const volHeight = (c.volume / maxVolume) * (mainChartHeight * 0.22);
+            const volHeight = (c.volume / maxVolume) * (mainChartHeight * 0.2);
             const volY = mainChartHeight - volHeight;
 
             return (
@@ -275,7 +671,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             const lowY = getYCoordinate(c.low);
 
             const isBullish = c.close >= c.open;
-            const color = isBullish ? '#10b981' : '#ef4444'; // emerald green / rose red
+            const color = isBullish ? '#10b981' : '#ef4444';
             const bodyY = Math.min(openY, closeY);
             const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
 
@@ -317,7 +713,6 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             indicators.map((ind, indIdx) => {
               if (ind.isSubchart || !ind.values) return null;
 
-              // Build SVG path string for overlay line
               let pathD = '';
               visibleCandles.forEach((_, idx) => {
                 const globalIdx = startIndex + idx;
@@ -349,16 +744,15 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
               );
             })}
 
-          {/* Trade Markers (Green ▲ Long Entry, Red ▼ Exit/Short) */}
+          {/* Trade Markers & Connectors */}
           {visibleTrades.map((trade) => {
-            const isEntryVisible = trade.entryIndex >= startIndex && trade.entryIndex < candles.length;
-            const isExitVisible = trade.exitIndex >= startIndex && trade.exitIndex < candles.length;
-
+            const isEntryVisible = trade.entryIndex >= startIndex && trade.entryIndex < endIndex;
+            const isExitVisible = trade.exitIndex >= startIndex && trade.exitIndex < endIndex;
             const isSelected = selectedTradeId === trade.id;
 
             return (
               <g key={`trade-group-${trade.id}`}>
-                {/* Long Entry Marker */}
+                {/* Long/Short Entry Marker */}
                 {isEntryVisible && (
                   (() => {
                     const localIdx = trade.entryIndex - startIndex;
@@ -370,25 +764,27 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                     return (
                       <g
                         className="cursor-pointer transition transform hover:scale-125"
-                        onClick={() => onSelectTrade?.(trade.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectTrade?.(trade.id);
+                        }}
                       >
-                        {/* Green ▲ Triangle */}
                         <polygon
                           points={`${x},${y - 12} ${x - 6},${y} ${x + 6},${y}`}
-                          fill="#10b981"
-                          stroke="#064e3b"
-                          strokeWidth="1"
+                          fill={trade.type === 'LONG' ? '#10b981' : '#f59e0b'}
+                          stroke="#0f172a"
+                          strokeWidth="1.5"
                         />
                         <text
                           x={x}
                           y={y + 11}
-                          fill="#34d399"
+                          fill={trade.type === 'LONG' ? '#34d399' : '#fbbf24'}
                           fontSize="9"
                           fontWeight="bold"
                           textAnchor="middle"
                           fontFamily="monospace"
                         >
-                          BUY
+                          {trade.type === 'LONG' ? 'BUY' : 'SELL'}
                         </text>
                       </g>
                     );
@@ -408,14 +804,16 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                     return (
                       <g
                         className="cursor-pointer transition transform hover:scale-125"
-                        onClick={() => onSelectTrade?.(trade.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectTrade?.(trade.id);
+                        }}
                       >
-                        {/* Red ▼ Triangle */}
                         <polygon
                           points={`${x},${y + 12} ${x - 6},${y} ${x + 6},${y}`}
                           fill={isWin ? '#3b82f6' : '#ef4444'}
                           stroke="#0f172a"
-                          strokeWidth="1"
+                          strokeWidth="1.5"
                         />
                         <text
                           x={x}
@@ -433,7 +831,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                   })()
                 )}
 
-                {/* Dashed line connecting Entry to Exit for Selected Trade */}
+                {/* Connection line between Entry and Exit */}
                 {isSelected && isEntryVisible && isExitVisible && (
                   (() => {
                     const entryLocalIdx = trade.entryIndex - startIndex;
@@ -444,15 +842,19 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                     const y2 = getYCoordinate(trade.exitPrice);
 
                     return (
-                      <line
-                        x1={x1}
-                        y1={y1}
-                        x2={x2}
-                        y2={y2}
-                        stroke={trade.pnl >= 0 ? '#10b981' : '#ef4444'}
-                        strokeWidth="2"
-                        strokeDasharray="4 4"
-                      />
+                      <g key="connection-line">
+                        <line
+                          x1={x1}
+                          y1={y1}
+                          x2={x2}
+                          y2={y2}
+                          stroke={trade.pnl >= 0 ? '#10b981' : '#ef4444'}
+                          strokeWidth="2"
+                          strokeDasharray="4 4"
+                        />
+                        <circle cx={x1} cy={y1} r="4" fill="#3b82f6" />
+                        <circle cx={x2} cy={y2} r="4" fill={trade.pnl >= 0 ? '#10b981' : '#ef4444'} />
+                      </g>
                     );
                   })()
                 )}
@@ -460,7 +862,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             );
           })}
 
-          {/* Crosshair & Tooltip Overlay on Hover */}
+          {/* Crosshair Overlay on Hover */}
           {hoverIndex !== null && visibleCandles[hoverIndex] && (
             <g key="crosshair-overlay">
               {(() => {
@@ -470,7 +872,6 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
 
                 return (
                   <>
-                    {/* Vertical Line */}
                     <line
                       x1={x}
                       y1="0"
@@ -480,28 +881,26 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                       strokeWidth="1"
                       strokeDasharray="2 2"
                     />
-                    {/* Horizontal Line */}
                     <line
                       x1="0"
                       y1={y}
-                      x2={svgWidth - 60}
+                      x2={svgWidth - 65}
                       y2={y}
                       stroke="#94a3b8"
                       strokeWidth="1"
                       strokeDasharray="2 2"
                     />
-                    {/* Price Tag Box */}
                     <rect
-                      x={svgWidth - 58}
+                      x={svgWidth - 63}
                       y={y - 9}
-                      width="54"
+                      width="58"
                       height="18"
                       fill="#0f172a"
                       stroke="#475569"
                       rx="3"
                     />
                     <text
-                      x={svgWidth - 31}
+                      x={svgWidth - 34}
                       y={y + 3}
                       fill="#f8fafc"
                       fontSize="9"
@@ -520,7 +919,6 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
           {/* Subchart Area (RSI Oscillator) */}
           {showSubchart && rsiIndicator && rsiIndicator.values && (
             <g key="subchart-pane">
-              {/* Divider Line */}
               <line
                 x1="0"
                 y1={mainChartHeight + 10}
@@ -530,7 +928,6 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                 strokeWidth="1"
               />
 
-              {/* Subchart Label */}
               <text
                 x="10"
                 y={mainChartHeight + 25}
@@ -542,30 +939,29 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
                 RSI (14) Oscillator
               </text>
 
-              {/* 70 Overbought & 30 Oversold Threshold Lines */}
               <line
                 x1="0"
                 y1={getSubchartYCoordinate(70)}
-                x2={svgWidth - 60}
+                x2={svgWidth - 65}
                 y2={getSubchartYCoordinate(70)}
                 stroke="#ef4444"
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 opacity="0.6"
               />
-              <text x={svgWidth - 52} y={getSubchartYCoordinate(70) + 3} fill="#ef4444" fontSize="9" fontFamily="monospace">70</text>
+              <text x={svgWidth - 58} y={getSubchartYCoordinate(70) + 3} fill="#ef4444" fontSize="9" fontFamily="monospace">70</text>
 
               <line
                 x1="0"
                 y1={getSubchartYCoordinate(30)}
-                x2={svgWidth - 60}
+                x2={svgWidth - 65}
                 y2={getSubchartYCoordinate(30)}
                 stroke="#10b981"
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 opacity="0.6"
               />
-              <text x={svgWidth - 52} y={getSubchartYCoordinate(30) + 3} fill="#10b981" fontSize="9" fontFamily="monospace">30</text>
+              <text x={svgWidth - 58} y={getSubchartYCoordinate(30) + 3} fill="#10b981" fontSize="9" fontFamily="monospace">30</text>
 
               {/* RSI Line */}
               {(() => {
@@ -597,34 +993,106 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
         </svg>
       </div>
 
-      {/* Chart Legend & Indicators Key Footer */}
+      {/* Interactive Time Navigation & Timeline Scrollbar Bar */}
+      <div className="flex flex-col gap-2 bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs">
+        <div className="flex items-center justify-between gap-3 text-slate-300">
+          
+          {/* Historical Time Bounds Indicator */}
+          <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-400">
+            <span className="font-bold">{dateSpanText}</span>
+          </div>
+
+          {/* Quick Navigation Buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setScrollOffset(maxScroll)}
+              disabled={scrollOffset >= maxScroll}
+              className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 px-2 py-1 rounded transition"
+              title="Jump to Oldest Historical Data"
+            >
+              <SkipBack className="w-3 h-3 text-emerald-400" />
+              <span className="hidden sm:inline text-[11px]">Oldest</span>
+            </button>
+
+            <button
+              onClick={() => setScrollOffset((prev) => Math.min(maxScroll, prev + 20))}
+              disabled={scrollOffset >= maxScroll}
+              className="p-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 rounded transition"
+              title="Scroll Backwards in Time"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setScrollOffset((prev) => Math.max(0, prev - 20))}
+              disabled={scrollOffset <= 0}
+              className="p-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 rounded transition"
+              title="Scroll Forwards in Time"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setScrollOffset(0)}
+              disabled={scrollOffset <= 0}
+              className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 px-2 py-1 rounded transition"
+              title="Jump to Latest Present Data"
+            >
+              <span className="hidden sm:inline text-[11px]">Latest</span>
+              <SkipForward className="w-3 h-3 text-emerald-400" />
+            </button>
+          </div>
+
+        </div>
+
+        {/* Horizontal Scroll Range Slider */}
+        <div className="flex items-center gap-3 pt-1">
+          <span className="text-[10px] text-slate-500 font-mono">Past</span>
+          <input
+            type="range"
+            min={0}
+            max={maxScroll}
+            value={maxScroll - scrollOffset}
+            onChange={(e) => setScrollOffset(maxScroll - parseInt(e.target.value))}
+            className="w-full accent-emerald-500 bg-slate-800 h-2 rounded cursor-pointer"
+            title="Drag timeline scrollbar to navigate back and forth through years"
+          />
+          <span className="text-[10px] text-slate-500 font-mono">Present</span>
+        </div>
+      </div>
+
+      {/* Chart Legend Footer */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-            <span>Fast EMA (9)</span>
+            <span>Fast EMA</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
-            <span>Slow EMA (21)</span>
+            <span>Slow EMA</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span>
-            <span>RSI Oscillator</span>
+            <span>RSI</span>
           </div>
           <div className="flex items-center gap-1.5 border-l border-slate-800 pl-3">
             <span className="text-emerald-400 font-bold">▲ BUY</span>
-            <span className="text-slate-500">Long Entry</span>
+            <span className="text-slate-500">Long</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-rose-400 font-bold">▼ EXIT</span>
-            <span className="text-slate-500">Exit / Take Profit / Stop</span>
+            <span className="text-amber-400 font-bold">▼ SELL</span>
+            <span className="text-slate-500">Short</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-blue-400 font-bold">● EXIT</span>
+            <span className="text-slate-500">Trade Exit</span>
           </div>
         </div>
 
-        <div className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
-          <Info className="w-3 h-3 text-slate-400" />
-          <span>Click any trade in the log to inspect entry/exit on chart</span>
+        <div className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+          <Info className="w-3 h-3 text-emerald-400" />
+          <span>Slide finger / Drag canvas or use slider to scroll • Ctrl+Wheel or pinch to zoom</span>
         </div>
       </div>
 

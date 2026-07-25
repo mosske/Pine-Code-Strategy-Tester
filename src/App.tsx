@@ -10,21 +10,27 @@ import { PythonExportModal } from './components/PythonExportModal';
 import { PresetsModal } from './components/PresetsModal';
 
 import { PRESET_STRATEGIES } from './data/presetStrategies';
-import { generateCandles, runStrategyBacktest } from './utils/backtestEngine';
-import { AssetSymbol, Timeframe, StrategyInput, BacktestResult, PinePresetStrategy } from './types';
+import { generateCandles, runStrategyBacktest, runMcpBacktest, fetchMcpCredits } from './utils/backtestEngine';
+import { AssetSymbol, Timeframe, BacktestPeriod, StrategyInput, BacktestResult, PinePresetStrategy, TradingKitCredits } from './types';
 
 export default function App() {
-  // Active Strategy State
+  // Recommended Strategy Selection & State
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(PRESET_STRATEGIES[0].id);
   const [strategyTitle, setStrategyTitle] = useState<string>(PRESET_STRATEGIES[0].title);
   const [pineCode, setPineCode] = useState<string>(PRESET_STRATEGIES[0].pineCode);
   const [inputs, setInputs] = useState<StrategyInput[]>(PRESET_STRATEGIES[0].inputs);
-  const [selectedAsset, setSelectedAsset] = useState<AssetSymbol>('BTC/USDT');
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1H');
+  const [selectedAsset, setSelectedAsset] = useState<AssetSymbol>(PRESET_STRATEGIES[0].defaultAsset);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(PRESET_STRATEGIES[0].defaultTimeframe);
+  const [selectedPeriod, setSelectedPeriod] = useState<BacktestPeriod>(PRESET_STRATEGIES[0].defaultPeriod || '1Y');
 
   // Trading Costs & Account Capital
   const [initialCapital, setInitialCapital] = useState<number>(10000);
   const [commissionPct, setCommissionPct] = useState<number>(0.075);
   const [slippagePct, setSlippagePct] = useState<number>(0.02);
+
+  // TradingKit MCP Engine & Credits State
+  const [mcpCredits, setMcpCredits] = useState<TradingKitCredits | null>(null);
+  const [mcpError, setMcpError] = useState<string | null>(null);
 
   // UI Tabs & Selected Trade State
   const [activeTab, setActiveTab] = useState<'chart' | 'editor' | 'report'>('chart');
@@ -37,44 +43,101 @@ export default function App() {
   const [isPythonExportOpen, setIsPythonExportOpen] = useState<boolean>(false);
   const [isPresetsOpen, setIsPresetsOpen] = useState<boolean>(false);
 
-  // Generate Candles dataset
+  // Generate Candles dataset (for visual chart fallback & overlay over selected backtest period)
   const candles = useMemo(() => {
-    return generateCandles(selectedAsset, selectedTimeframe, 300);
-  }, [selectedAsset, selectedTimeframe]);
+    return generateCandles(selectedAsset, selectedTimeframe, selectedPeriod);
+  }, [selectedAsset, selectedTimeframe, selectedPeriod]);
 
-  // Execute Backtest
+  // Initial Backtest Result
   const [backtestResult, setBacktestResult] = useState<BacktestResult>(() => {
     return runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct);
   });
 
-  const handleRunBacktest = useCallback(() => {
-    setIsBacktesting(true);
-    setTimeout(() => {
-      const res = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct);
-      setBacktestResult(res);
-      setIsBacktesting(false);
-    }, 150);
-  }, [candles, inputs, pineCode, initialCapital, commissionPct, slippagePct]);
+  // Fetch MCP Credits on mount
+  useEffect(() => {
+    fetchMcpCredits().then((credits) => {
+      if (credits) setMcpCredits(credits);
+    });
+  }, []);
 
-  // Re-run backtest whenever inputs or candles change
+  // Execute Backtest via TradingKit MCP (mcp.trader.dev) with local simulation fallback
+  const handleRunBacktest = useCallback(async () => {
+    setIsBacktesting(true);
+    setMcpError(null);
+
+    try {
+      // 1. Try running backtest via TradingKit MCP with backtest period
+      const mcpResult = await runMcpBacktest(
+        pineCode,
+        selectedAsset,
+        selectedTimeframe,
+        initialCapital,
+        commissionPct,
+        slippagePct,
+        inputs,
+        selectedPeriod
+      );
+
+      // Add local indicators calculation for price chart overlay
+      const localIndicators = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct).indicators;
+      mcpResult.indicators = localIndicators;
+
+      if (mcpResult.totalTrades === 0 || !mcpResult.trades || mcpResult.trades.length === 0) {
+        const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct);
+        setBacktestResult(localRes);
+      } else {
+        setBacktestResult(mcpResult);
+      }
+
+      // Refresh credits after backtest
+      fetchMcpCredits().then((cred) => {
+        if (cred) setMcpCredits(cred);
+      });
+    } catch (err: any) {
+      console.warn('TradingKit MCP backtest fallback:', err.message);
+      setMcpError(err.message || 'TradingKit MCP backtest unavailable; using local simulation.');
+
+      // 2. Fallback to local backtest engine if MCP is unavailable
+      const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct);
+      setBacktestResult(localRes);
+    } finally {
+      setIsBacktesting(false);
+    }
+  }, [candles, inputs, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct]);
+
+  // Re-run backtest whenever strategy, asset, timeframe, period, or key account parameters change
   useEffect(() => {
     handleRunBacktest();
-  }, [selectedAsset, selectedTimeframe, initialCapital, commissionPct, slippagePct]);
+  }, [selectedStrategyId, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct]);
 
-  // Parameter Change Handler
+  // Parameter Change Handler (User edits variables for custom testing)
   const handleInputChange = (id: string, value: any) => {
     setInputs((prev) =>
       prev.map((inp) => (inp.id === id ? { ...inp, value } : inp))
     );
   };
 
-  // Select Preset Handler
+  // Select Preset/Strategy Handler (Auto-populates and resets variables to recommended defaults)
   const handleSelectPreset = (preset: PinePresetStrategy) => {
+    setSelectedStrategyId(preset.id);
     setStrategyTitle(preset.title);
     setPineCode(preset.pineCode);
-    setInputs(preset.inputs);
+    setInputs(preset.inputs.map((inp) => ({ ...inp })));
     setSelectedAsset(preset.defaultAsset);
     setSelectedTimeframe(preset.defaultTimeframe);
+    setSelectedPeriod(preset.defaultPeriod || '1Y');
+  };
+
+  // Select Strategy by ID from Top Dropdown
+  const handleSelectStrategyById = (id: string) => {
+    const found = PRESET_STRATEGIES.find((s) => s.id === id) || PRESET_STRATEGIES[0];
+    handleSelectPreset(found);
+  };
+
+  // Reset current strategy back to its recommended defaults
+  const handleResetToRecommended = () => {
+    const found = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId) || PRESET_STRATEGIES[0];
+    handleSelectPreset(found);
   };
 
   // AI Generated Strategy Apply Handler
@@ -103,13 +166,17 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
       
-      {/* Top Header Navbar */}
+      {/* Top Header Navbar with Recommended Strategy Dropdown & Period Selection */}
       <Navbar
         strategyTitle={strategyTitle}
+        selectedStrategyId={selectedStrategyId}
+        onSelectStrategyById={handleSelectStrategyById}
         selectedAsset={selectedAsset}
         selectedTimeframe={selectedTimeframe}
+        selectedPeriod={selectedPeriod}
         onAssetChange={setSelectedAsset}
         onTimeframeChange={setSelectedTimeframe}
+        onPeriodChange={setSelectedPeriod}
         onRunBacktest={handleRunBacktest}
         onOpenAIGenerator={() => setIsAIGeneratorOpen(true)}
         onOpenAudit={() => setIsAIAuditOpen(true)}
@@ -118,6 +185,7 @@ export default function App() {
         isBacktesting={isBacktesting}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        mcpCredits={mcpCredits}
       />
 
       {/* Main Workspace Body */}
@@ -183,7 +251,7 @@ export default function App() {
               />
             )}
 
-            {/* Quick summary strip under Chart tab */}
+            {/* Performance analytics summary strip under Chart tab */}
             {activeTab === 'chart' && (
               <BacktestReport
                 result={backtestResult}
@@ -194,11 +262,12 @@ export default function App() {
 
           </div>
 
-          {/* Right Controls Panel (1 column on desktop) */}
+          {/* Right Controls Panel with Variable Reset & Backtest Period (1 column on desktop) */}
           <div className="lg:col-span-1">
             <StrategyInputsPanel
               inputs={inputs}
               onInputChange={handleInputChange}
+              onResetToRecommended={handleResetToRecommended}
               initialCapital={initialCapital}
               onCapitalChange={setInitialCapital}
               commissionPct={commissionPct}
@@ -209,6 +278,8 @@ export default function App() {
               onAssetChange={setSelectedAsset}
               selectedTimeframe={selectedTimeframe}
               onTimeframeChange={setSelectedTimeframe}
+              selectedPeriod={selectedPeriod}
+              onPeriodChange={setSelectedPeriod}
               onRunBacktest={handleRunBacktest}
               isBacktesting={isBacktesting}
             />

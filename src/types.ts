@@ -1,6 +1,8 @@
 export type Timeframe = '1m' | '5m' | '15m' | '1H' | '4H' | '1D';
 
-export type AssetSymbol = 'BTC/USDT' | 'ETH/USDT' | 'SPY' | 'QQQ' | 'NVDA' | 'TSLA' | 'EUR/USD' | 'GOLD';
+export type AssetSymbol = 'BTC/USDT' | 'ETH/USDT' | 'EUR/USD' | 'XAU/USD';
+
+export type BacktestPeriod = '1Y' | '3Y' | '5Y' | '8Y' | '10Y';
 
 export interface Candle {
   time: string;
@@ -83,6 +85,29 @@ export interface BacktestResult {
     returnPct: number;
   }[];
   indicators: IndicatorOverlay[];
+  
+  // TradingKit MCP Engine Metadata
+  isMcpEngine?: boolean;
+  mcpSymbol?: string;
+  mcpMarket?: string;
+  mcpDurationMs?: number;
+  mcpParityNotes?: string[];
+  mcpUserHint?: string;
+  mcpViewUrl?: string;
+  mcpBrowseUrl?: string;
+  mcpResultId?: string;
+  creditsRemaining?: number;
+}
+
+export interface TradingKitCredits {
+  balance: number;
+  weeklyGrant?: number;
+  weeklyResetAt?: string;
+  subscription?: {
+    tier: string;
+    status: string;
+  };
+  message?: string;
 }
 
 export interface PinePresetStrategy {
@@ -93,6 +118,7 @@ export interface PinePresetStrategy {
   pineCode: string;
   defaultAsset: AssetSymbol;
   defaultTimeframe: Timeframe;
+  defaultPeriod?: BacktestPeriod;
   inputs: StrategyInput[];
 }
 

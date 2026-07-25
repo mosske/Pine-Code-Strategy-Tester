@@ -55,9 +55,257 @@ function cleanPineCode(code: string): string {
   return cleaned.trim();
 }
 
+// Helper to invoke Trader.dev MCP tools via SSE + HTTP
+async function callTraderDevMCP(toolName: string, toolArgs: Record<string, any>): Promise<any> {
+  const apiKey = process.env.TradingKit_API_KEY;
+  if (!apiKey) {
+    throw new Error("TradingKit_API_KEY environment variable is not configured in secrets.");
+  }
+
+  const sseRes = await fetch("https://mcp.trader.dev/sse", {
+    headers: { Authorization: "Bearer " + apiKey },
+  });
+
+  if (!sseRes.ok) {
+    throw new Error(`Trader.dev MCP SSE connection failed with status ${sseRes.status}`);
+  }
+
+  const reader = sseRes.body?.getReader();
+  if (!reader) throw new Error("Could not acquire reader for Trader.dev MCP SSE stream");
+
+  const decoder = new TextDecoder();
+  let endpoint = "";
+  let buf = "";
+
+  while (!endpoint) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    for (const line of lines) {
+      if (line.startsWith("data:")) {
+        const dataStr = line.slice(5).trim();
+        if (dataStr.includes("/messages")) {
+          endpoint = dataStr;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!endpoint) throw new Error("Did not receive message endpoint from Trader.dev MCP");
+
+  const postUrl = endpoint.startsWith("http") ? endpoint : "https://mcp.trader.dev" + endpoint;
+
+  let toolResponse: any = null;
+  const readPromise = (async () => {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        if (line.startsWith("data:")) {
+          const d = line.slice(5).trim();
+          try {
+            const json = JSON.parse(d);
+            if (json.id === 2) {
+              toolResponse = json;
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+      if (toolResponse) break;
+    }
+  })();
+
+  // 1. Initialize session
+  await fetch(postUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "pine-tester", version: "1.0.0" } },
+    }),
+  });
+
+  // 2. Execute tool
+  await fetch(postUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: { name: toolName, arguments: toolArgs },
+    }),
+  });
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Trader.dev MCP response timeout after 25s")), 25000)
+  );
+
+  await Promise.race([readPromise, timeoutPromise]);
+  return toolResponse;
+}
+
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// TradingKit MCP Credits Endpoint
+app.get("/api/mcp/credits", async (req, res) => {
+  try {
+    const mcpResponse = await callTraderDevMCP("get_credits", {});
+    const contentText = mcpResponse?.result?.content?.[0]?.text;
+    if (contentText) {
+      const data = JSON.parse(contentText);
+      res.json(data);
+    } else {
+      res.json({ balance: 1000, message: "Connected to TradingKit MCP" });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to query TradingKit MCP credits" });
+  }
+});
+
+// TradingKit MCP Quick Backtest Endpoint
+app.post("/api/mcp/backtest", async (req, res) => {
+  try {
+    let { pineCode, symbol = "BTCUSDT", timeframe = "1H", initialCapital = 10000, commissionPct = 0.075, inputs = [] } = req.body;
+
+    if (!pineCode) {
+      return res.status(400).json({ error: "pineCode is required for backtesting" });
+    }
+
+    // Format symbol (e.g. 'BTC/USDT' -> 'BTCUSDT', 'ETH/USDT' -> 'ETHUSDT', 'XAU/USD' -> 'XAUUSD')
+    let formattedSymbol = symbol.replace("/", "").replace(":", "");
+    if (formattedSymbol === "GOLD" || formattedSymbol === "XAU/USD") formattedSymbol = "XAUUSD";
+
+    // Format timeframe ('1H' -> '1h', '4H' -> '4h')
+    let formattedTimeframe = timeframe.toLowerCase();
+
+    // Ensure //@version=6 is present for TV_ENGINE_JUL_26
+    let mcpPineCode = pineCode.trim();
+    if (mcpPineCode.includes("//@version=5")) {
+      mcpPineCode = mcpPineCode.replace("//@version=5", "//@version=6");
+    } else if (!mcpPineCode.includes("//@version=6")) {
+      mcpPineCode = "//@version=6\n" + mcpPineCode;
+    }
+
+    // Substitute inputs into Pine Code if passed
+    if (Array.isArray(inputs) && inputs.length > 0) {
+      inputs.forEach((inp: any) => {
+        if (inp.id && inp.value !== undefined) {
+          const regex = new RegExp(`(${inp.id}\\s*=\\s*input\\.[a-z]+\\()([0-9.]+)(,)`, 'gi');
+          mcpPineCode = mcpPineCode.replace(regex, `$1${inp.value}$3`);
+        }
+      });
+    }
+
+    console.log(`[TradingKit MCP] Running backtest for ${formattedSymbol} (${formattedTimeframe})...`);
+
+    const mcpResponse = await callTraderDevMCP("quick_backtest", {
+      pineSource: mcpPineCode,
+      symbol: formattedSymbol,
+      timeframe: formattedTimeframe,
+      initialCapital: Number(initialCapital) || 10000,
+      commissionPct: Number(commissionPct) || 0,
+    });
+
+    const contentArr = mcpResponse?.result?.content || [];
+    let backtestJson: any = null;
+    let textLogs: string[] = [];
+
+    for (const item of contentArr) {
+      if (item.type === "text") {
+        const text = item.text || "";
+        if (text.trim().startsWith("{")) {
+          try {
+            backtestJson = JSON.parse(text);
+          } catch (e) {}
+        } else {
+          textLogs.push(text);
+        }
+      }
+    }
+
+    if (!backtestJson || !backtestJson.result) {
+      if (mcpResponse?.result?.isError) {
+        const errText = contentArr.map((c: any) => c.text).join("\n");
+        return res.status(400).json({ error: "TradingKit MCP Error: " + errText });
+      }
+      return res.status(500).json({ error: "No valid backtest result returned from TradingKit MCP" });
+    }
+
+    const raw = backtestJson.result;
+
+    // Map MCP trades to TradeLogItem format
+    const trades = (raw.trades || []).map((t: any, idx: number) => ({
+      id: `mcp-trade-${idx + 1}`,
+      type: (t.side || t.type || "LONG").toUpperCase() === "SHORT" ? "SHORT" : "LONG",
+      entryIndex: t.entryBar || idx * 2,
+      exitIndex: t.exitBar || idx * 2 + 1,
+      entryTime: t.entryTime ? new Date(t.entryTime).toLocaleString() : `Bar ${t.entryBar || idx * 2}`,
+      exitTime: t.exitTime ? new Date(t.exitTime).toLocaleString() : `Bar ${t.exitBar || idx * 2 + 1}`,
+      entryPrice: t.entryPrice || 0,
+      exitPrice: t.exitPrice || 0,
+      size: t.qty || 1,
+      pnl: t.profit || 0,
+      pnlPercent: t.profitPct || 0,
+      exitReason: t.exitReason || "Signal Exit",
+    }));
+
+    // Map equity curve
+    const equityCurve = (raw.equityCurve || []).map((eq: any, idx: number) => ({
+      index: idx,
+      time: eq.time ? new Date(eq.time).toLocaleDateString() : `Point ${idx}`,
+      equity: eq.equity || initialCapital,
+      benchmark: eq.benchmark || initialCapital,
+      drawdownPercent: eq.drawdownPct || 0,
+    }));
+
+    res.json({
+      success: true,
+      isMcpEngine: true,
+      initialCapital: raw.initialCapital || initialCapital,
+      finalEquity: raw.finalEquity || initialCapital,
+      netProfit: raw.netProfit || 0,
+      netProfitPercent: raw.netProfitPct || 0,
+      buyHoldReturnPercent: raw.buyHoldReturnPct || 0,
+      totalTrades: raw.totalTrades || 0,
+      winningTrades: raw.winningTrades || 0,
+      losingTrades: raw.losingTrades || 0,
+      winRate: raw.winRatePct || (raw.totalTrades > 0 ? (raw.winningTrades / raw.totalTrades) * 100 : 0),
+      profitFactor: raw.profitFactor || 0,
+      maxDrawdown: raw.maxDrawdown || 0,
+      maxDrawdownPercent: raw.maxDrawdownPct || 0,
+      sharpeRatio: raw.sharpeRatio || 0,
+      sortinoRatio: raw.sortinoRatio || 0,
+      avgTradePnL: raw.avgTradePnL || 0,
+      avgTradePnLPercent: raw.avgTradePnLPct || 0,
+      maxConsecutiveWins: raw.maxConsecutiveWins || 0,
+      maxConsecutiveLosses: raw.maxConsecutiveLosses || 0,
+      equityCurve,
+      trades,
+      monthlyReturns: raw.monthlyReturns || [],
+      mcpSymbol: raw.displaySymbol || raw.symbol,
+      mcpMarket: raw.market,
+      mcpDurationMs: backtestJson.durationMs,
+      mcpParityNotes: textLogs,
+      mcpViewUrl: backtestJson.viewUrl || backtestJson.strategyViewUrl,
+      mcpBrowseUrl: backtestJson.browseUrl,
+      mcpResultId: backtestJson.resultId,
+    });
+  } catch (error: any) {
+    console.error("Error running TradingKit MCP backtest:", error);
+    res.status(500).json({ error: error.message || "Failed to execute TradingKit MCP backtest" });
+  }
 });
 
 // 1. Generate Pine Script Strategy Endpoint

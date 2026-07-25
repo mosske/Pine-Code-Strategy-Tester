@@ -73,6 +73,65 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
   return (
     <div id="backtest-report-container" className="flex flex-col gap-6">
       
+      {/* TradingKit MCP Execution & Parity Details Banner */}
+      {result.isMcpEngine && (
+        <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border border-emerald-500/40 p-4 sm:p-5 rounded-xl shadow-lg flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
+                ⚡
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-100">
+                    Executed on TradingKit MCP Cloud Engine
+                  </h4>
+                  <span className="text-[10px] font-mono uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+                    mcp.trader.dev
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Market: <span className="font-mono text-emerald-300 font-semibold">{result.mcpSymbol || 'BYBIT:BTCUSDT.P'}</span> {result.mcpMarket ? `(${result.mcpMarket})` : ''} • Execution Time: <span className="font-mono text-slate-200">{result.mcpDurationMs ? `${result.mcpDurationMs} ms` : 'Fast'}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Links or Result ID */}
+            {result.mcpResultId && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-400 font-mono text-[11px] bg-slate-950 px-2 py-1 rounded border border-slate-800">
+                  ID: {result.mcpResultId.slice(0, 12)}...
+                </span>
+                {result.mcpBrowseUrl && (
+                  <a 
+                    href={result.mcpBrowseUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-2.5 py-1 rounded text-xs transition"
+                  >
+                    View on Trader.dev ↗
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Parity Notes / User Hints */}
+          {result.mcpParityNotes && result.mcpParityNotes.length > 0 && (
+            <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-lg text-xs font-mono text-slate-300 flex flex-col gap-1 max-h-32 overflow-y-auto">
+              <span className="text-emerald-400 font-semibold text-[11px] uppercase tracking-wider">
+                TradingView Parity & Engine Match Profile:
+              </span>
+              {result.mcpParityNotes.map((note, idx) => (
+                <div key={`parity-${idx}`} className="whitespace-pre-wrap text-[11px] text-slate-400 leading-relaxed">
+                  {note}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         

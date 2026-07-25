@@ -5,19 +5,25 @@ import {
   Play, 
   ShieldCheck, 
   Code2, 
-  Download, 
-  Layers, 
   SlidersHorizontal,
-  Bot
+  Bot,
+  Zap,
+  Calendar,
+  Award
 } from 'lucide-react';
-import { AssetSymbol, Timeframe } from '../types';
+import { AssetSymbol, Timeframe, BacktestPeriod, TradingKitCredits } from '../types';
+import { PRESET_STRATEGIES } from '../data/presetStrategies';
 
 interface NavbarProps {
   strategyTitle: string;
+  selectedStrategyId: string;
+  onSelectStrategyById: (id: string) => void;
   selectedAsset: AssetSymbol;
   selectedTimeframe: Timeframe;
+  selectedPeriod: BacktestPeriod;
   onAssetChange: (asset: AssetSymbol) => void;
   onTimeframeChange: (timeframe: Timeframe) => void;
+  onPeriodChange: (period: BacktestPeriod) => void;
   onRunBacktest: () => void;
   onOpenAIGenerator: () => void;
   onOpenAudit: () => void;
@@ -26,45 +32,60 @@ interface NavbarProps {
   isBacktesting: boolean;
   activeTab: 'chart' | 'editor' | 'report';
   setActiveTab: (tab: 'chart' | 'editor' | 'report') => void;
+  mcpCredits?: TradingKitCredits | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   strategyTitle,
+  selectedStrategyId,
+  onSelectStrategyById,
   selectedAsset,
   selectedTimeframe,
+  selectedPeriod,
   onAssetChange,
   onTimeframeChange,
+  onPeriodChange,
   onRunBacktest,
   onOpenAIGenerator,
   onOpenAudit,
   onOpenPythonExport,
-  onOpenPresets,
   isBacktesting,
   activeTab,
   setActiveTab,
+  mcpCredits,
 }) => {
   return (
     <header id="main-header" className="bg-slate-900 border-b border-slate-800 text-slate-100 sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-16 gap-3">
           
-          {/* Logo & Strategy Title */}
+          {/* Logo & Recommended Strategy Selector */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-sm">
               <TrendingUp className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">
-                  Pine v5
-                </span>
-                <h1 className="text-sm sm:text-base font-semibold text-slate-100 truncate">
-                  {strategyTitle || 'Pine Script Strategy Studio'}
-                </h1>
+
+            <div className="flex flex-col min-w-0">
+              {/* Strategy Dropdown Label */}
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                <Award className="w-3 h-3 text-emerald-400" />
+                <span>Recommended Strategy:</span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block truncate">
-                Quant Strategy Workbench & Backtester
-              </p>
+
+              {/* Recommended High Win-Rate Strategy Dropdown */}
+              <select
+                id="select-strategy-dropdown"
+                value={selectedStrategyId}
+                onChange={(e) => onSelectStrategyById(e.target.value)}
+                className="bg-slate-950 border border-emerald-600/40 text-slate-100 font-semibold text-xs sm:text-sm rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 max-w-[240px] sm:max-w-[320px] truncate shadow-inner cursor-pointer"
+                title="Select a recommended high win-rate strategy to auto-populate default variables"
+              >
+                {PRESET_STRATEGIES.map((strat) => (
+                  <option key={strat.id} value={strat.id}>
+                    ⭐ {strat.title}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -108,81 +129,83 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Right Action Controls */}
+          {/* Right Controls: Asset, Timeframe, Backtest Period & Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Asset Selector */}
-            <select
-              id="select-asset"
-              value={selectedAsset}
-              onChange={(e) => onAssetChange(e.target.value as AssetSymbol)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-            >
-              <option value="BTC/USDT">BTC/USDT</option>
-              <option value="ETH/USDT">ETH/USDT</option>
-              <option value="SPY">SPY (S&P 500)</option>
-              <option value="QQQ">QQQ (Nasdaq)</option>
-              <option value="NVDA">NVDA</option>
-              <option value="TSLA">TSLA</option>
-              <option value="EUR/USD">EUR/USD</option>
-              <option value="GOLD">GOLD</option>
-            </select>
+            
+            {/* Recommended Asset Selector ONLY */}
+            <div className="flex flex-col">
+              <span className="text-[9px] text-slate-400 font-mono hidden xl:block">Asset Pair</span>
+              <select
+                id="select-asset"
+                value={selectedAsset}
+                onChange={(e) => onAssetChange(e.target.value as AssetSymbol)}
+                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono font-bold"
+              >
+                <option value="BTC/USDT">BTC/USDT</option>
+                <option value="ETH/USDT">ETH/USDT</option>
+                <option value="EUR/USD">EUR/USD</option>
+                <option value="XAU/USD">XAU/USD (Gold)</option>
+              </select>
+            </div>
 
             {/* Timeframe Selector */}
-            <select
-              id="select-timeframe"
-              value={selectedTimeframe}
-              onChange={(e) => onTimeframeChange(e.target.value as Timeframe)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
-            >
-              <option value="1m">1m</option>
-              <option value="5m">5m</option>
-              <option value="15m">15m</option>
-              <option value="1H">1H</option>
-              <option value="4H">4H</option>
-              <option value="1D">1D</option>
-            </select>
+            <div className="flex flex-col">
+              <span className="text-[9px] text-slate-400 font-mono hidden xl:block">Timeframe</span>
+              <select
+                id="select-timeframe"
+                value={selectedTimeframe}
+                onChange={(e) => onTimeframeChange(e.target.value as Timeframe)}
+                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+              >
+                <option value="1m">1m</option>
+                <option value="5m">5m</option>
+                <option value="15m">15m</option>
+                <option value="1H">1H</option>
+                <option value="4H">4H</option>
+                <option value="1D">1D</option>
+              </select>
+            </div>
 
-            {/* Presets Library Button */}
-            <button
-              id="btn-presets"
-              onClick={onOpenPresets}
-              className="hidden lg:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
-              title="Strategy Presets"
-            >
-              <Layers className="w-3.5 h-3.5 text-slate-400" />
-              Presets
-            </button>
+            {/* Backtest Period Selector (1Y, 3Y, 5Y, 8Y, 10Y) */}
+            <div className="flex flex-col">
+              <span className="text-[9px] text-emerald-400 font-mono font-bold hidden xl:block flex items-center gap-0.5">
+                <Calendar className="w-2.5 h-2.5 inline" /> Period
+              </span>
+              <select
+                id="select-backtest-period"
+                value={selectedPeriod}
+                onChange={(e) => onPeriodChange(e.target.value as BacktestPeriod)}
+                className="bg-slate-950 border border-emerald-600/50 text-emerald-300 font-bold text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                title="Select Historical Backtest Period (1Y, 3Y, 5Y, 8Y, 10Y)"
+              >
+                <option value="1Y">1 Year (1Y)</option>
+                <option value="3Y">3 Years (3Y)</option>
+                <option value="5Y">5 Years (5Y)</option>
+                <option value="8Y">8 Years (8Y)</option>
+                <option value="10Y">10 Years (10Y)</option>
+              </select>
+            </div>
 
             {/* AI Prompt Generator Button */}
             <button
               id="btn-ai-generator"
               onClick={onOpenAIGenerator}
               className="flex items-center gap-1.5 bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 text-xs font-medium px-2.5 py-1.5 rounded-lg transition"
+              title="AI Strategy Generator"
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-              <span className="hidden sm:inline">AI Builder</span>
+              <span className="hidden lg:inline">AI Builder</span>
             </button>
 
             {/* Audit Button */}
             <button
               id="btn-audit"
               onClick={onOpenAudit}
-              className="hidden md:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
+              className="hidden lg:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
               title="Audit Pine Script for bugs"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
               Audit
-            </button>
-
-            {/* Python Export Button */}
-            <button
-              id="btn-python-export"
-              onClick={onOpenPythonExport}
-              className="hidden xl:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-700 transition"
-              title="Export strategy to Python Backtrader"
-            >
-              <Bot className="w-3.5 h-3.5 text-cyan-400" />
-              Python
             </button>
 
             {/* Run Backtest CTA Button */}
@@ -190,7 +213,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="btn-run-backtest"
               onClick={onRunBacktest}
               disabled={isBacktesting}
-              className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition disabled:opacity-50"
+              className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition disabled:opacity-50"
             >
               <Play className={`w-3.5 h-3.5 fill-current ${isBacktesting ? 'animate-spin' : ''}`} />
               <span>{isBacktesting ? 'Testing...' : 'Run Backtest'}</span>
