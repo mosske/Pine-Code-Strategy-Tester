@@ -23,7 +23,7 @@ export async function runMcpBacktest(
   inputs: StrategyInput[],
   period: BacktestPeriod = '10Y',
   tradeSizePct: number = 20,
-  isCompounding: boolean = true,
+  isCompounding: boolean = false,
   withdrawPct: number = 0
 ): Promise<BacktestResult> {
   const response = await fetch('/api/mcp/backtest', {
@@ -305,7 +305,7 @@ export function runBacktest(
   commissionPct: number = 0.075,
   slippagePct: number = 0.02,
   tradeSizePct: number = 20,
-  isCompounding: boolean = true,
+  isCompounding: boolean = false,
   withdrawPct: number = 0
 ): BacktestResult {
   if (!candles || candles.length === 0) {

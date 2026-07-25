@@ -32,7 +32,7 @@ export default function App() {
   const [commissionPct, setCommissionPct] = useState<number>(0.075);
   const [slippagePct, setSlippagePct] = useState<number>(0.02);
   const [tradeSizePct, setTradeSizePct] = useState<number>(20);
-  const [isCompounding, setIsCompounding] = useState<boolean>(true);
+  const [isCompounding, setIsCompounding] = useState<boolean>(false);
   const [withdrawPct, setWithdrawPct] = useState<number>(0);
 
   // TradingKit MCP Engine & Credits State
