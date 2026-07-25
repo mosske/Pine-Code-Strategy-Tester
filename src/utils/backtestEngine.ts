@@ -347,27 +347,30 @@ export function runBacktest(
 
     const side: 'LONG' | 'SHORT' = fastVal >= slowVal ? 'LONG' : 'SHORT';
 
-    // 77.8% win rate: trades 3 and 7 in every 9 are losses, others are wins
-    const isWin = (tradeIndexCounter % 9) !== 3 && (tradeIndexCounter % 9) !== 7;
-
-    const holdBars = isWin ? (4 + (tradeIndexCounter % 5)) : (3 + (tradeIndexCounter % 3));
+    const holdBars = 3 + (tradeIndexCounter % 6);
     const exitBarIndex = Math.min(totalBars - 1, k + holdBars);
     const exitBar = candles[exitBarIndex];
 
-    const pnlPct = isWin
-      ? Number((0.85 + (tradeIndexCounter % 5) * 0.15).toFixed(2))
-      : Number((-0.38 - (tradeIndexCounter % 3) * 0.08).toFixed(2));
+    const entryPrice = entryBar.close;
+    const exitPrice = exitBar.close;
 
-    const positionCap = currentEquity * 0.15;
-    const pnlVal = positionCap * (pnlPct / 100);
+    // Calculate real price move from candles for LONG or SHORT position
+    const priceMovePct = side === 'LONG'
+      ? ((exitPrice - entryPrice) / entryPrice) * 100
+      : ((entryPrice - exitPrice) / entryPrice) * 100;
 
-    const commVal = positionCap * (commissionPct / 100) * 2;
-    const netPnlVal = pnlVal - commVal;
-    const netPnlPct = (netPnlVal / positionCap) * 100;
+    // Deduct trading friction (commission + slippage for roundtrip entry and exit)
+    const frictionPct = (commissionPct + slippagePct) * 2;
+    const netPnlPct = Number((priceMovePct - frictionPct).toFixed(2));
+
+    const positionCap = currentEquity * 0.20;
+    const netPnlVal = Number((positionCap * (netPnlPct / 100)).toFixed(2));
 
     currentEquity += netPnlVal;
 
-    if (netPnlVal > 0) {
+    const isWin = netPnlVal > 0;
+
+    if (isWin) {
       winCount++;
       consecutiveWins++;
       consecutiveLosses = 0;
@@ -387,18 +390,15 @@ export function runBacktest(
     if (dd > maxDrawdown) maxDrawdown = dd;
     if (ddPct > maxDrawdownPct) maxDrawdownPct = ddPct;
 
-    const entryPrice = entryBar.close;
-    const exitPrice = side === 'LONG'
-      ? Number((entryPrice * (1 + netPnlPct / 100)).toFixed(2))
-      : Number((entryPrice * (1 - netPnlPct / 100)).toFixed(2));
+    const decimals = startPrice < 10 ? 4 : 2;
 
     const slPrice = side === 'LONG'
-      ? Number((entryPrice * (1 - 0.005)).toFixed(2))
-      : Number((entryPrice * (1 + 0.005)).toFixed(2));
+      ? Number((entryPrice * 0.995).toFixed(decimals))
+      : Number((entryPrice * 1.005).toFixed(decimals));
 
     const tpPrice = side === 'LONG'
-      ? Number((entryPrice * (1 + 0.012)).toFixed(2))
-      : Number((entryPrice * (1 - 0.012)).toFixed(2));
+      ? Number((entryPrice * 1.012).toFixed(decimals))
+      : Number((entryPrice * 0.988).toFixed(decimals));
 
     trades.push({
       id: `trade-${trades.length + 1}`,
@@ -412,8 +412,8 @@ export function runBacktest(
       stopLossPrice: slPrice,
       takeProfitPrice: tpPrice,
       size: Number((positionCap / entryPrice).toFixed(4)),
-      pnl: Number(netPnlVal.toFixed(2)),
-      pnlPercent: Number(netPnlPct.toFixed(2)),
+      pnl: netPnlVal,
+      pnlPercent: netPnlPct,
       exitReason: isWin ? 'Take Profit' : 'Stop Loss',
     });
 

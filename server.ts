@@ -183,9 +183,13 @@ app.post("/api/mcp/backtest", async (req, res) => {
       return res.status(400).json({ error: "pineCode is required for backtesting" });
     }
 
-    // Format symbol (e.g. 'BTC/USDT' -> 'BTCUSDT', 'ETH/USDT' -> 'ETHUSDT', 'XAU/USD' -> 'XAUUSD')
-    let formattedSymbol = symbol.replace("/", "").replace(":", "");
-    if (formattedSymbol === "GOLD" || formattedSymbol === "XAU/USD") formattedSymbol = "XAUUSD";
+    // Format symbol (e.g. 'BTC/USDT' -> 'BYBIT:BTCUSDT.P', 'ETH/USDT' -> 'BYBIT:ETHUSDT.P', 'EUR/USD' -> 'FX:EURUSD', 'XAU/USD' -> 'OANDA:XAUUSD')
+    let formattedSymbol = symbol;
+    if (symbol === "BTC/USDT" || symbol === "BTCUSDT") formattedSymbol = "BYBIT:BTCUSDT.P";
+    else if (symbol === "ETH/USDT" || symbol === "ETHUSDT") formattedSymbol = "BYBIT:ETHUSDT.P";
+    else if (symbol === "EUR/USD" || symbol === "EURUSD") formattedSymbol = "FX:EURUSD";
+    else if (symbol === "XAU/USD" || symbol === "XAUUSD" || symbol === "GOLD") formattedSymbol = "OANDA:XAUUSD";
+    else formattedSymbol = symbol.replace("/", "").replace(":", "");
 
     // Format timeframe ('1H' -> '1h', '4H' -> '4h')
     let formattedTimeframe = timeframe.toLowerCase();

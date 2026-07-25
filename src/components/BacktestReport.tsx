@@ -201,7 +201,7 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
             <span>Sharpe Ratio</span>
             <BarChart3 className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-xl font-extrabold font-mono text-emerald-300">
+          <div className="text-xl font-extrabold font-mono text-emerald-400">
             {result.sharpeRatio}
           </div>
           <div className="text-xs text-slate-500 mt-1 font-mono">

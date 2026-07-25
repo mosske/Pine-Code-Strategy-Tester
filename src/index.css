@@ -175,10 +175,26 @@
   border-color: #c59b27 !important;
 }
 
-.designer-theme .text-emerald-400,
-.designer-theme .text-emerald-300,
-.designer-theme .text-emerald-500 {
-  color: #b3881b !important;
+/* Preserve green and red financial metrics across all themes */
+.text-profit-green,
+.text-emerald-400,
+.text-emerald-500,
+.text-emerald-300 {
+  color: #10b981 !important;
+}
+
+.text-loss-red,
+.text-rose-400,
+.text-rose-500,
+.text-red-400,
+.text-red-500 {
+  color: #f43f5e !important;
+}
+
+/* Header specific gold accent in Designer Theme */
+.designer-theme header#main-header .text-emerald-400,
+.designer-theme header#main-header .text-emerald-300 {
+  color: #c59b27 !important;
 }
 
 .designer-theme .text-slate-100,
