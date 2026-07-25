@@ -214,9 +214,9 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
           <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
             <span>Sharpe Ratio</span>
-            <BarChart3 className="w-4 h-4 text-emerald-400" />
+            <BarChart3 className={`w-4 h-4 ${result.sharpeRatio <= 0 ? 'text-rose-400' : 'text-emerald-400'}`} />
           </div>
-          <div className="text-xl font-extrabold font-mono text-emerald-400">
+          <div className={`text-xl font-extrabold font-mono ${result.sharpeRatio <= 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
             {result.sharpeRatio}
           </div>
           <div className="text-xs text-slate-500 mt-1 font-mono">
