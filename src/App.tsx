@@ -15,8 +15,8 @@ import { generateCandles, runStrategyBacktest, runMcpBacktest, fetchMcpCredits }
 import { AssetSymbol, Timeframe, BacktestPeriod, StrategyInput, BacktestResult, PinePresetStrategy, TradingKitCredits } from './types';
 
 export default function App() {
-  // Theme State
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  // Theme State ('dark' | 'light' | 'designer')
+  const [theme, setTheme] = useState<'dark' | 'light' | 'designer'>('dark');
 
   // Recommended Strategy Selection & State
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>(PRESET_STRATEGIES[0].id);
@@ -168,7 +168,13 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${theme === 'light' ? 'light-theme bg-slate-50 text-slate-900' : 'dark-theme bg-slate-950 text-slate-100'}`}>
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+      theme === 'designer' 
+        ? 'designer-theme bg-[#faf7f2] text-[#1a1412]' 
+        : theme === 'light' 
+        ? 'light-theme bg-slate-50 text-slate-900' 
+        : 'dark-theme bg-slate-950 text-slate-100'
+    }`}>
       
       {/* Top Header Navbar with Recommended Strategy Dropdown, Theme & Period Selection */}
       <Navbar
@@ -297,20 +303,22 @@ export default function App() {
 
       {/* Footer */}
       <footer className={`border-t py-6 px-4 transition-colors ${
-        theme === 'light' 
+        theme === 'designer'
+          ? 'bg-[#1a1412] border-[#2e231f] text-[#dcd0bc]'
+          : theme === 'light' 
           ? 'bg-white border-slate-200 text-slate-600' 
           : 'bg-slate-900 border-slate-800 text-slate-400'
       }`}>
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="font-bold tracking-wide text-slate-200">PineStudio Pro</span>
-            <span className="text-slate-500">•</span>
+            <span className="font-bold tracking-wide">PineStudio Pro</span>
+            <span className="opacity-40">•</span>
             <span>Quantitative Strategy Engine</span>
           </div>
 
           {/* Powered by Shadowflash Badge */}
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold tracking-tight text-[11px] shadow-sm">
-            <Zap className="w-3.5 h-3.5 fill-current text-emerald-400" />
+            <Zap className="w-3.5 h-3.5 fill-current" />
             <span>Powered by Shadowflash</span>
           </div>
         </div>

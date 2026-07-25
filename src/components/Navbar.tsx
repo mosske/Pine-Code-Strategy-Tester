@@ -16,6 +16,7 @@ import {
   Smartphone,
   Sun,
   Moon,
+  Crown,
   Palette
 } from 'lucide-react';
 import { AssetSymbol, Timeframe, BacktestPeriod, TradingKitCredits } from '../types';
@@ -40,8 +41,8 @@ interface NavbarProps {
   activeTab: 'chart' | 'editor' | 'report';
   setActiveTab: (tab: 'chart' | 'editor' | 'report') => void;
   mcpCredits?: TradingKitCredits | null;
-  theme?: 'dark' | 'light';
-  onThemeChange?: (theme: 'dark' | 'light') => void;
+  theme?: 'dark' | 'light' | 'designer';
+  onThemeChange?: (theme: 'dark' | 'light' | 'designer') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -254,17 +255,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Theme Selector */}
             <div className="flex flex-col">
               <span className="text-[9px] text-slate-400 font-mono flex items-center gap-0.5">
-                {theme === 'light' ? <Sun className="w-2.5 h-2.5 text-amber-500" /> : <Moon className="w-2.5 h-2.5 text-indigo-400" />} Theme
+                {theme === 'designer' ? <Crown className="w-2.5 h-2.5 text-amber-400" /> : theme === 'light' ? <Sun className="w-2.5 h-2.5 text-amber-500" /> : <Moon className="w-2.5 h-2.5 text-indigo-400" />} Theme
               </span>
               <select
                 id="select-theme"
                 value={theme}
-                onChange={(e) => onThemeChange?.(e.target.value as 'dark' | 'light')}
+                onChange={(e) => onThemeChange?.(e.target.value as 'dark' | 'light' | 'designer')}
                 className="bg-slate-950 border border-slate-800 text-slate-200 font-medium text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                title="Select Theme Mode (Dark or Light Capital Theme)"
+                title="Select Theme Mode (Dark, Light, or Luxury Designer Theme)"
               >
                 <option value="dark">🌙 Dark Theme</option>
                 <option value="light">☀️ Light Theme</option>
+                <option value="designer">✨ Designer Theme</option>
               </select>
             </div>
 
@@ -401,11 +403,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <select
               value={theme}
-              onChange={(e) => onThemeChange?.(e.target.value as 'dark' | 'light')}
+              onChange={(e) => onThemeChange?.(e.target.value as 'dark' | 'light' | 'designer')}
               className="bg-slate-950 border border-slate-800 text-slate-200 font-bold text-xs rounded-lg px-1.5 py-1.5 font-mono"
             >
               <option value="dark">🌙 Dark</option>
               <option value="light">☀️ Light</option>
+              <option value="designer">✨ Designer</option>
             </select>
           </div>
         </div>
