@@ -8,10 +8,16 @@ interface StrategyInputsPanelProps {
   onResetToRecommended: () => void;
   initialCapital: number;
   onCapitalChange: (cap: number) => void;
+  tradeSizePct: number;
+  onTradeSizeChange: (size: number) => void;
   commissionPct: number;
   onCommissionChange: (comm: number) => void;
   slippagePct: number;
   onSlippageChange: (slip: number) => void;
+  isCompounding: boolean;
+  onCompoundingChange: (comp: boolean) => void;
+  withdrawPct: number;
+  onWithdrawPctChange: (withdraw: number) => void;
   selectedAsset: AssetSymbol;
   onAssetChange: (asset: AssetSymbol) => void;
   selectedTimeframe: Timeframe;
@@ -28,10 +34,16 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
   onResetToRecommended,
   initialCapital,
   onCapitalChange,
+  tradeSizePct,
+  onTradeSizeChange,
   commissionPct,
   onCommissionChange,
   slippagePct,
   onSlippageChange,
+  isCompounding,
+  onCompoundingChange,
+  withdrawPct,
+  onWithdrawPctChange,
   selectedAsset,
   onAssetChange,
   selectedTimeframe,
@@ -180,11 +192,12 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
 
       {/* Account & Trading Cost Inputs */}
       <div className="flex flex-col gap-3 pt-3 border-t border-slate-800">
-        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
           Capital & Costs
         </span>
 
-        {/* Capital */}
+        {/* Initial Capital */}
         <div className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
           <label htmlFor="input-capital" className="text-slate-300 font-medium">
             Initial Capital ($)
@@ -198,7 +211,24 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
           />
         </div>
 
-        {/* Commission */}
+        {/* Trade Size (%) */}
+        <div className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+          <label htmlFor="input-trade-size" className="text-slate-300 font-medium">
+            Trade Size (% of capital)
+          </label>
+          <input
+            id="input-trade-size"
+            type="number"
+            min="1"
+            max="100"
+            step="1"
+            value={tradeSizePct}
+            onChange={(e) => onTradeSizeChange(Math.max(1, Math.min(100, parseFloat(e.target.value) || 10)))}
+            className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-mono text-right text-xs rounded px-2 py-1"
+          />
+        </div>
+
+        {/* Commission (%) */}
         <div className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
           <label htmlFor="input-commission" className="text-slate-300 font-medium">
             Commission (%)
@@ -206,14 +236,14 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
           <input
             id="input-commission"
             type="number"
-            step="0.01"
+            step="0.005"
             value={commissionPct}
             onChange={(e) => onCommissionChange(parseFloat(e.target.value) || 0)}
             className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-mono text-right text-xs rounded px-2 py-1"
           />
         </div>
 
-        {/* Slippage */}
+        {/* Slippage (%) */}
         <div className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
           <label htmlFor="input-slippage" className="text-slate-300 font-medium">
             Slippage (%)
@@ -221,11 +251,51 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
           <input
             id="input-slippage"
             type="number"
-            step="0.01"
+            step="0.005"
             value={slippagePct}
             onChange={(e) => onSlippageChange(parseFloat(e.target.value) || 0)}
             className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-mono text-right text-xs rounded px-2 py-1"
           />
+        </div>
+
+        {/* Compounding Toggle */}
+        <div className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+          <div className="flex flex-col">
+            <label htmlFor="input-compounding" className="text-slate-300 font-medium cursor-pointer">
+              Compounding Equity
+            </label>
+            <span className="text-[10px] text-slate-500">Position size scales with equity</span>
+          </div>
+          <input
+            id="input-compounding"
+            type="checkbox"
+            checked={isCompounding}
+            onChange={(e) => onCompoundingChange(e.target.checked)}
+            className="w-4 h-4 accent-emerald-500 rounded bg-slate-800 border-slate-700 cursor-pointer"
+          />
+        </div>
+
+        {/* Withdrawal per Win (%) */}
+        <div className="flex flex-col gap-1.5 text-xs bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+          <div className="flex items-center justify-between">
+            <label htmlFor="input-withdraw-pct" className="text-slate-300 font-medium">
+              Withdrawal per Win (%)
+            </label>
+            <span className="font-mono text-emerald-400 font-bold">
+              {withdrawPct}%
+            </span>
+          </div>
+          <input
+            id="input-withdraw-pct"
+            type="range"
+            min="0"
+            max="100"
+            step="5"
+            value={withdrawPct}
+            onChange={(e) => onWithdrawPctChange(parseFloat(e.target.value))}
+            className="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
+          />
+          <span className="text-[10px] text-slate-500">% of winning trade PnL withdrawn to cash</span>
         </div>
       </div>
 

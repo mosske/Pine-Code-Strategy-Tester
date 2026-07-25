@@ -57,6 +57,7 @@ export interface BacktestResult {
   finalEquity: number;
   netProfit: number;
   netProfitPercent: number;
+  totalWithdrawn: number;
   buyHoldReturnPercent: number;
   totalTrades: number;
   winningTrades: number;

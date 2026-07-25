@@ -21,7 +21,10 @@ export async function runMcpBacktest(
   commissionPct: number,
   slippagePct: number,
   inputs: StrategyInput[],
-  period: BacktestPeriod = '10Y'
+  period: BacktestPeriod = '10Y',
+  tradeSizePct: number = 20,
+  isCompounding: boolean = true,
+  withdrawPct: number = 0
 ): Promise<BacktestResult> {
   const response = await fetch('/api/mcp/backtest', {
     method: 'POST',
@@ -35,6 +38,9 @@ export async function runMcpBacktest(
       slippagePct,
       inputs,
       period,
+      tradeSizePct,
+      isCompounding,
+      withdrawPct,
     }),
   });
 
@@ -297,7 +303,10 @@ export function runBacktest(
   pineScriptCode: string,
   initialCapital: number = 10000,
   commissionPct: number = 0.075,
-  slippagePct: number = 0.02
+  slippagePct: number = 0.02,
+  tradeSizePct: number = 20,
+  isCompounding: boolean = true,
+  withdrawPct: number = 0
 ): BacktestResult {
   if (!candles || candles.length === 0) {
     throw new Error("No candle data available for backtest");
@@ -325,6 +334,7 @@ export function runBacktest(
 
   const trades: TradeLogItem[] = [];
   let currentEquity = initialCapital;
+  let totalWithdrawn = 0;
   let maxPeakEquity = initialCapital;
   let maxDrawdown = 0;
   let maxDrawdownPct = 0;
@@ -337,88 +347,141 @@ export function runBacktest(
   let maxConsLosses = 0;
 
   const equityPerBar: number[] = new Array(totalBars).fill(initialCapital);
-  let tradeIndexCounter = 0;
+  const decimals = startPrice < 10 ? 4 : 2;
 
-  for (let k = startIndex; k < totalBars - 10; k += stepBars) {
-    tradeIndexCounter++;
-    const entryBar = candles[k];
-    const fastVal = fastEma[k] ?? entryBar.close;
-    const slowVal = slowEma[k] ?? entryBar.close;
+  let k = startIndex;
+  while (k < totalBars - 5) {
+    const prevFast = fastEma[k - 1] ?? candles[k - 1].close;
+    const prevSlow = slowEma[k - 1] ?? candles[k - 1].close;
+    const currFast = fastEma[k] ?? candles[k].close;
+    const currSlow = slowEma[k] ?? candles[k].close;
 
-    const side: 'LONG' | 'SHORT' = fastVal >= slowVal ? 'LONG' : 'SHORT';
+    const rsiPrev = rsiValues[k - 1] ?? 50;
+    const rsiCurr = rsiValues[k] ?? 50;
 
-    const holdBars = 3 + (tradeIndexCounter % 6);
-    const exitBarIndex = Math.min(totalBars - 1, k + holdBars);
-    const exitBar = candles[exitBarIndex];
+    const isLongSignal = (prevFast < prevSlow && currFast >= currSlow) || (rsiPrev <= 32 && rsiCurr > 32);
+    const isShortSignal = (prevFast > prevSlow && currFast <= currSlow) || (rsiPrev >= 68 && rsiCurr < 68);
 
-    const entryPrice = entryBar.close;
-    const exitPrice = exitBar.close;
+    if (isLongSignal || isShortSignal) {
+      const side: 'LONG' | 'SHORT' = isLongSignal ? 'LONG' : 'SHORT';
+      const entryBar = candles[k];
+      const entryPrice = entryBar.close;
 
-    // Calculate real price move from candles for LONG or SHORT position
-    const priceMovePct = side === 'LONG'
-      ? ((exitPrice - entryPrice) / entryPrice) * 100
-      : ((entryPrice - exitPrice) / entryPrice) * 100;
+      const slPct = 0.008; // 0.8% stop loss
+      const tpPct = 0.018; // 1.8% take profit
+      const maxHoldBars = 16;
 
-    // Deduct trading friction (commission + slippage for roundtrip entry and exit)
-    const frictionPct = (commissionPct + slippagePct) * 2;
-    const netPnlPct = Number((priceMovePct - frictionPct).toFixed(2));
+      let exitBarIndex = Math.min(totalBars - 1, k + maxHoldBars);
+      let exitReason: 'Take Profit' | 'Stop Loss' | 'Signal Exit' | 'Trailing Stop' | 'End of Bar' = 'Signal Exit';
+      let exitPrice = candles[exitBarIndex].close;
 
-    const positionCap = currentEquity * 0.20;
-    const netPnlVal = Number((positionCap * (netPnlPct / 100)).toFixed(2));
+      for (let b = k + 1; b <= Math.min(totalBars - 1, k + maxHoldBars); b++) {
+        const bar = candles[b];
+        if (side === 'LONG') {
+          const priceLowChange = (bar.low - entryPrice) / entryPrice;
+          const priceHighChange = (bar.high - entryPrice) / entryPrice;
+          if (priceLowChange <= -slPct) {
+            exitBarIndex = b;
+            exitPrice = Number((entryPrice * (1 - slPct)).toFixed(decimals));
+            exitReason = 'Stop Loss';
+            break;
+          }
+          if (priceHighChange >= tpPct) {
+            exitBarIndex = b;
+            exitPrice = Number((entryPrice * (1 + tpPct)).toFixed(decimals));
+            exitReason = 'Take Profit';
+            break;
+          }
+        } else {
+          const priceHighChange = (entryPrice - bar.high) / entryPrice;
+          const priceLowChange = (entryPrice - bar.low) / entryPrice;
+          if (priceHighChange <= -slPct) {
+            exitBarIndex = b;
+            exitPrice = Number((entryPrice * (1 + slPct)).toFixed(decimals));
+            exitReason = 'Stop Loss';
+            break;
+          }
+          if (priceLowChange >= tpPct) {
+            exitBarIndex = b;
+            exitPrice = Number((entryPrice * (1 - tpPct)).toFixed(decimals));
+            exitReason = 'Take Profit';
+            break;
+          }
+        }
+      }
 
-    currentEquity += netPnlVal;
+      const exitBar = candles[exitBarIndex];
+      const priceMovePct = side === 'LONG'
+        ? ((exitPrice - entryPrice) / entryPrice) * 100
+        : ((entryPrice - exitPrice) / entryPrice) * 100;
 
-    const isWin = netPnlVal > 0;
+      const frictionPct = (commissionPct + slippagePct) * 2;
+      const netPnlPct = Number((priceMovePct - frictionPct).toFixed(2));
 
-    if (isWin) {
-      winCount++;
-      consecutiveWins++;
-      consecutiveLosses = 0;
-      if (consecutiveWins > maxConsWins) maxConsWins = consecutiveWins;
+      const sizingCapital = isCompounding ? currentEquity : initialCapital;
+      const positionCap = sizingCapital * (tradeSizePct / 100);
+      const netPnlVal = Number((positionCap * (netPnlPct / 100)).toFixed(2));
+
+      const isWin = netPnlVal > 0;
+
+      if (isWin) {
+        winCount++;
+        consecutiveWins++;
+        consecutiveLosses = 0;
+        if (consecutiveWins > maxConsWins) maxConsWins = consecutiveWins;
+
+        const withdrawnVal = Number((netPnlVal * (withdrawPct / 100)).toFixed(2));
+        totalWithdrawn += withdrawnVal;
+        currentEquity += (netPnlVal - withdrawnVal);
+      } else {
+        lossCount++;
+        consecutiveLosses++;
+        consecutiveWins = 0;
+        if (consecutiveLosses > maxConsLosses) maxConsLosses = consecutiveLosses;
+
+        currentEquity += netPnlVal;
+      }
+
+      if (currentEquity > maxPeakEquity) {
+        maxPeakEquity = currentEquity;
+      }
+      const dd = maxPeakEquity - currentEquity;
+      const ddPct = (dd / maxPeakEquity) * 100;
+      if (dd > maxDrawdown) maxDrawdown = dd;
+      if (ddPct > maxDrawdownPct) maxDrawdownPct = ddPct;
+
+      const slPrice = side === 'LONG'
+        ? Number((entryPrice * (1 - slPct)).toFixed(decimals))
+        : Number((entryPrice * (1 + slPct)).toFixed(decimals));
+
+      const tpPrice = side === 'LONG'
+        ? Number((entryPrice * (1 + tpPct)).toFixed(decimals))
+        : Number((entryPrice * (1 - tpPct)).toFixed(decimals));
+
+      trades.push({
+        id: `trade-${trades.length + 1}`,
+        type: side,
+        entryIndex: k,
+        exitIndex: exitBarIndex,
+        entryTime: entryBar.time,
+        exitTime: exitBar.time,
+        entryPrice,
+        exitPrice,
+        stopLossPrice: slPrice,
+        takeProfitPrice: tpPrice,
+        size: Number((positionCap / entryPrice).toFixed(4)),
+        pnl: netPnlVal,
+        pnlPercent: netPnlPct,
+        exitReason,
+      });
+
+      for (let b = exitBarIndex; b < totalBars; b++) {
+        equityPerBar[b] = currentEquity;
+      }
+
+      k = exitBarIndex + 1;
     } else {
-      lossCount++;
-      consecutiveLosses++;
-      consecutiveWins = 0;
-      if (consecutiveLosses > maxConsLosses) maxConsLosses = consecutiveLosses;
-    }
-
-    if (currentEquity > maxPeakEquity) {
-      maxPeakEquity = currentEquity;
-    }
-    const dd = maxPeakEquity - currentEquity;
-    const ddPct = (dd / maxPeakEquity) * 100;
-    if (dd > maxDrawdown) maxDrawdown = dd;
-    if (ddPct > maxDrawdownPct) maxDrawdownPct = ddPct;
-
-    const decimals = startPrice < 10 ? 4 : 2;
-
-    const slPrice = side === 'LONG'
-      ? Number((entryPrice * 0.995).toFixed(decimals))
-      : Number((entryPrice * 1.005).toFixed(decimals));
-
-    const tpPrice = side === 'LONG'
-      ? Number((entryPrice * 1.012).toFixed(decimals))
-      : Number((entryPrice * 0.988).toFixed(decimals));
-
-    trades.push({
-      id: `trade-${trades.length + 1}`,
-      type: side,
-      entryIndex: k,
-      exitIndex: exitBarIndex,
-      entryTime: entryBar.time,
-      exitTime: exitBar.time,
-      entryPrice,
-      exitPrice,
-      stopLossPrice: slPrice,
-      takeProfitPrice: tpPrice,
-      size: Number((positionCap / entryPrice).toFixed(4)),
-      pnl: netPnlVal,
-      pnlPercent: netPnlPct,
-      exitReason: isWin ? 'Take Profit' : 'Stop Loss',
-    });
-
-    for (let b = exitBarIndex; b < totalBars; b++) {
-      equityPerBar[b] = currentEquity;
+      k++;
     }
   }
 
@@ -444,8 +507,8 @@ export function runBacktest(
     });
   }
 
-  const netProfit = currentEquity - initialCapital;
-  const netProfitPercent = (netProfit / initialCapital) * 100;
+  const totalProfit = (currentEquity + totalWithdrawn) - initialCapital;
+  const netProfitPercent = (totalProfit / initialCapital) * 100;
   const buyHoldReturnPercent = ((candles[candles.length - 1].close - startPrice) / startPrice) * 100;
 
   const totalTrades = trades.length;
@@ -455,7 +518,7 @@ export function runBacktest(
   const grossLoss = Math.abs(trades.filter((t) => t.pnl < 0).reduce((acc, t) => acc + t.pnl, 0));
   const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : 3.25;
 
-  const avgTradePnL = totalTrades > 0 ? netProfit / totalTrades : 0;
+  const avgTradePnL = totalTrades > 0 ? totalProfit / totalTrades : 0;
   const avgTradePnLPercent = totalTrades > 0 ? trades.reduce((acc, t) => acc + t.pnlPercent, 0) / totalTrades : 0;
 
   const returns: number[] = [];
@@ -520,8 +583,9 @@ export function runBacktest(
   return {
     initialCapital,
     finalEquity: Number(currentEquity.toFixed(2)),
-    netProfit: Number(netProfit.toFixed(2)),
+    netProfit: Number(totalProfit.toFixed(2)),
     netProfitPercent: Number(netProfitPercent.toFixed(2)),
+    totalWithdrawn: Number(totalWithdrawn.toFixed(2)),
     buyHoldReturnPercent: Number(buyHoldReturnPercent.toFixed(2)),
     totalTrades,
     winningTrades: winCount,

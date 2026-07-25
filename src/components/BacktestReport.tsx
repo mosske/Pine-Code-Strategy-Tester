@@ -12,7 +12,8 @@ import {
   ArrowDownRight,
   Filter,
   Layers,
-  Activity
+  Activity,
+  Banknote
 } from 'lucide-react';
 
 interface BacktestReportProps {
@@ -133,7 +134,7 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         
         {/* Net Profit Card */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
@@ -164,6 +165,20 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
           </div>
           <div className="text-xs text-slate-500 mt-1 font-mono">
             {result.winningTrades}W / {result.losingTrades}L ({result.totalTrades} total)
+          </div>
+        </div>
+
+        {/* Total Withdrawn Card */}
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
+            <span>Withdrawn</span>
+            <Banknote className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-xl font-extrabold font-mono text-emerald-400">
+            ${(result.totalWithdrawn || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="text-xs text-slate-500 mt-1 font-mono">
+            Accumulated payouts
           </div>
         </div>
 
@@ -326,10 +341,10 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
           </div>
         </div>
 
-        {/* Table Content */}
-        <div className="overflow-x-auto rounded-lg border border-slate-800">
+        {/* Table Content - Fixed Height Scrollable Table */}
+        <div className="max-h-[460px] overflow-y-auto overflow-x-auto rounded-lg border border-slate-800 relative shadow-inner">
           <table className="w-full text-left text-xs text-slate-300 font-mono">
-            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px]">
+            <thead className="sticky top-0 z-10 bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px] shadow-sm">
               <tr>
                 <th className="py-3 px-3">#</th>
                 <th className="py-3 px-3">Type</th>

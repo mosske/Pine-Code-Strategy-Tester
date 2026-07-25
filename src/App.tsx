@@ -31,6 +31,9 @@ export default function App() {
   const [initialCapital, setInitialCapital] = useState<number>(10000);
   const [commissionPct, setCommissionPct] = useState<number>(0.075);
   const [slippagePct, setSlippagePct] = useState<number>(0.02);
+  const [tradeSizePct, setTradeSizePct] = useState<number>(20);
+  const [isCompounding, setIsCompounding] = useState<boolean>(true);
+  const [withdrawPct, setWithdrawPct] = useState<number>(0);
 
   // TradingKit MCP Engine & Credits State
   const [mcpCredits, setMcpCredits] = useState<TradingKitCredits | null>(null);
@@ -54,7 +57,7 @@ export default function App() {
 
   // Initial Backtest Result
   const [backtestResult, setBacktestResult] = useState<BacktestResult>(() => {
-    return runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct);
+    return runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct);
   });
 
   // Fetch MCP Credits on mount
@@ -79,15 +82,18 @@ export default function App() {
         commissionPct,
         slippagePct,
         inputs,
-        selectedPeriod
+        selectedPeriod,
+        tradeSizePct,
+        isCompounding,
+        withdrawPct
       );
 
       // Add local indicators calculation for price chart overlay
-      const localIndicators = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct).indicators;
+      const localIndicators = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct).indicators;
       mcpResult.indicators = localIndicators;
 
       if (mcpResult.totalTrades === 0 || !mcpResult.trades || mcpResult.trades.length === 0) {
-        const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct);
+        const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct);
         setBacktestResult(localRes);
       } else {
         setBacktestResult(mcpResult);
@@ -102,17 +108,17 @@ export default function App() {
       setMcpError(err.message || 'TradingKit MCP backtest unavailable; using local simulation.');
 
       // 2. Fallback to local backtest engine if MCP is unavailable
-      const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct);
+      const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct);
       setBacktestResult(localRes);
     } finally {
       setIsBacktesting(false);
     }
-  }, [candles, inputs, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct]);
+  }, [candles, inputs, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct]);
 
   // Re-run backtest whenever strategy, asset, timeframe, period, or key account parameters change
   useEffect(() => {
     handleRunBacktest();
-  }, [selectedStrategyId, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct]);
+  }, [selectedStrategyId, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct]);
 
   // Parameter Change Handler (User edits variables for custom testing)
   const handleInputChange = (id: string, value: any) => {
@@ -282,10 +288,16 @@ export default function App() {
               onResetToRecommended={handleResetToRecommended}
               initialCapital={initialCapital}
               onCapitalChange={setInitialCapital}
+              tradeSizePct={tradeSizePct}
+              onTradeSizeChange={setTradeSizePct}
               commissionPct={commissionPct}
               onCommissionChange={setCommissionPct}
               slippagePct={slippagePct}
               onSlippageChange={setSlippagePct}
+              isCompounding={isCompounding}
+              onCompoundingChange={setIsCompounding}
+              withdrawPct={withdrawPct}
+              onWithdrawPctChange={setWithdrawPct}
               selectedAsset={selectedAsset}
               onAssetChange={setSelectedAsset}
               selectedTimeframe={selectedTimeframe}

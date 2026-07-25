@@ -159,20 +159,20 @@
 /* Luxury Gold Accents & Highlights */
 .designer-theme .bg-emerald-500,
 .designer-theme .bg-emerald-600 {
-  background-color: #c59b27 !important;
+  background-color: #d8af38 !important;
   color: #1a1412 !important;
 }
 
 .designer-theme .bg-emerald-500\/10,
 .designer-theme .bg-emerald-500\/20 {
-  background-color: rgba(197, 155, 39, 0.12) !important;
+  background-color: rgba(248, 226, 135, 0.16) !important;
 }
 
 .designer-theme .border-emerald-500,
 .designer-theme .border-emerald-500\/30,
 .designer-theme .border-emerald-600\/40,
 .designer-theme .border-emerald-600\/50 {
-  border-color: #c59b27 !important;
+  border-color: #e5be48 !important;
 }
 
 /* Preserve green and red financial metrics across all themes */
@@ -191,41 +191,94 @@
   color: #f43f5e !important;
 }
 
-/* Header specific gold accent in Designer Theme */
+/* Header & Dark Container specific gold accents & high-contrast text in Designer Theme */
 .designer-theme header#main-header .text-emerald-400,
-.designer-theme header#main-header .text-emerald-300 {
-  color: #c59b27 !important;
+.designer-theme header#main-header .text-emerald-300,
+.designer-theme header#main-header .text-amber-400,
+.designer-theme header#main-header .text-amber-500,
+.designer-theme .bg-slate-950 .text-emerald-400,
+.designer-theme .bg-slate-950 .text-amber-400,
+.designer-theme .bg-[#1a1412] .text-emerald-400,
+.designer-theme .bg-[#1a1412] .text-amber-400,
+.designer-theme footer .text-emerald-400 {
+  color: #ffe066 !important; /* Brilliant bright gold font on dark background */
 }
 
+/* Light background default text colors in Designer Theme */
 .designer-theme .text-slate-100,
 .designer-theme .text-slate-200,
 .designer-theme .text-white {
   color: #1a1412 !important;
 }
 
-.designer-theme header#main-header .text-slate-100,
-.designer-theme header#main-header .text-slate-200 {
-  color: #f8f5f0 !important;
-}
-
 .designer-theme .text-slate-300,
 .designer-theme .text-slate-400 {
-  color: #5c4d43 !important;
+  color: #4a3b30 !important;
 }
 
-.designer-theme select,
-.designer-theme input,
-.designer-theme textarea {
-  background-color: #faf7f2 !important;
-  color: #1a1412 !important;
-  border-color: #dcd0bc !important;
+/* MANDATORY HIGH CONTRAST OVERRIDES FOR DARK CONTAINERS IN DESIGNER THEME */
+/* When sitting on a dark espresso container (.bg-slate-950, .bg-[#1a1412], .bg-[#281e1a], header, thead, etc.) */
+.designer-theme .bg-slate-950,
+.designer-theme .bg-[#1a1412],
+.designer-theme .bg-[#281e1a],
+.designer-theme header#main-header,
+.designer-theme thead {
+  color: #fcf9f2 !important;
 }
 
+.designer-theme .bg-slate-950 .text-slate-100,
+.designer-theme .bg-slate-950 .text-slate-200,
+.designer-theme .bg-slate-950 .text-white,
+.designer-theme header#main-header .text-slate-100,
+.designer-theme header#main-header .text-slate-200,
+.designer-theme header#main-header .text-white,
+.designer-theme thead .text-white,
+.designer-theme thead .text-slate-100,
+.designer-theme thead .text-slate-200 {
+  color: #ffffff !important;
+}
+
+.designer-theme .bg-slate-950 .text-slate-300,
+.designer-theme .bg-slate-950 .text-slate-400,
+.designer-theme .bg-slate-950 .text-slate-500,
+.designer-theme .bg-slate-950 label,
+.designer-theme .bg-slate-950 span,
+.designer-theme header#main-header .text-slate-300,
+.designer-theme header#main-header .text-slate-400,
+.designer-theme header#main-header label,
+.designer-theme header#main-header span,
+.designer-theme thead th,
+.designer-theme thead .text-slate-400,
+.designer-theme thead .text-slate-300 {
+  color: #f2e4ca !important; /* Bright light cream/gold font for high contrast on dark brown */
+}
+
+/* Unselected filter tabs & buttons inside dark containers */
+.designer-theme .bg-slate-950 button.text-slate-400,
+.designer-theme .bg-slate-950 button:not(.bg-emerald-600):not(.bg-slate-800) {
+  color: #e5d5b7 !important;
+}
+
+/* Active tab button inside dark filter bar */
+.designer-theme .bg-slate-950 button.bg-slate-800,
+.designer-theme .bg-slate-950 .bg-slate-800 {
+  background-color: #3d2f28 !important;
+  color: #ffe066 !important;
+}
+
+/* Input select dropdowns inside dark containers */
+.designer-theme .bg-slate-950 select,
+.designer-theme .bg-slate-950 input[type="text"],
 .designer-theme header#main-header select,
 .designer-theme header#main-header input {
-  background-color: #281e1a !important;
-  color: #f8f5f0 !important;
-  border-color: #c59b27 !important;
+  background-color: #2b201a !important;
+  color: #fcf9f2 !important;
+  border-color: #e5be48 !important;
+}
+
+.designer-theme select option {
+  background-color: #1a1412 !important;
+  color: #fcf9f2 !important;
 }
 
 /* Modal overlays in Designer Theme */
