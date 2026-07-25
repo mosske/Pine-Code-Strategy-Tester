@@ -13,7 +13,10 @@ import {
   Menu,
   X,
   Share2,
-  Smartphone
+  Smartphone,
+  Sun,
+  Moon,
+  Palette
 } from 'lucide-react';
 import { AssetSymbol, Timeframe, BacktestPeriod, TradingKitCredits } from '../types';
 import { PRESET_STRATEGIES } from '../data/presetStrategies';
@@ -37,6 +40,8 @@ interface NavbarProps {
   activeTab: 'chart' | 'editor' | 'report';
   setActiveTab: (tab: 'chart' | 'editor' | 'report') => void;
   mcpCredits?: TradingKitCredits | null;
+  theme?: 'dark' | 'light';
+  onThemeChange?: (theme: 'dark' | 'light') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -58,6 +63,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   mcpCredits,
+  theme = 'dark',
+  onThemeChange,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -244,6 +251,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               </select>
             </div>
 
+            {/* Theme Selector */}
+            <div className="flex flex-col">
+              <span className="text-[9px] text-slate-400 font-mono flex items-center gap-0.5">
+                {theme === 'light' ? <Sun className="w-2.5 h-2.5 text-amber-500" /> : <Moon className="w-2.5 h-2.5 text-indigo-400" />} Theme
+              </span>
+              <select
+                id="select-theme"
+                value={theme}
+                onChange={(e) => onThemeChange?.(e.target.value as 'dark' | 'light')}
+                className="bg-slate-950 border border-slate-800 text-slate-200 font-medium text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                title="Select Theme Mode (Dark or Light Capital Theme)"
+              >
+                <option value="dark">🌙 Dark Theme</option>
+                <option value="light">☀️ Light Theme</option>
+              </select>
+            </div>
+
             {/* AI Prompt Generator */}
             <button
               id="btn-ai-generator"
@@ -373,6 +397,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <option value="5Y">5Y</option>
               <option value="8Y">8Y</option>
               <option value="10Y">10Y</option>
+            </select>
+
+            <select
+              value={theme}
+              onChange={(e) => onThemeChange?.(e.target.value as 'dark' | 'light')}
+              className="bg-slate-950 border border-slate-800 text-slate-200 font-bold text-xs rounded-lg px-1.5 py-1.5 font-mono"
+            >
+              <option value="dark">🌙 Dark</option>
+              <option value="light">☀️ Light</option>
             </select>
           </div>
         </div>

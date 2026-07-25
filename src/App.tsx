@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Zap } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { StrategyChart } from './components/StrategyChart';
 import { PineScriptEditor } from './components/PineScriptEditor';
@@ -14,6 +15,9 @@ import { generateCandles, runStrategyBacktest, runMcpBacktest, fetchMcpCredits }
 import { AssetSymbol, Timeframe, BacktestPeriod, StrategyInput, BacktestResult, PinePresetStrategy, TradingKitCredits } from './types';
 
 export default function App() {
+  // Theme State
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
   // Recommended Strategy Selection & State
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>(PRESET_STRATEGIES[0].id);
   const [strategyTitle, setStrategyTitle] = useState<string>(PRESET_STRATEGIES[0].title);
@@ -164,9 +168,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${theme === 'light' ? 'light-theme bg-slate-50 text-slate-900' : 'dark-theme bg-slate-950 text-slate-100'}`}>
       
-      {/* Top Header Navbar with Recommended Strategy Dropdown & Period Selection */}
+      {/* Top Header Navbar with Recommended Strategy Dropdown, Theme & Period Selection */}
       <Navbar
         strategyTitle={strategyTitle}
         selectedStrategyId={selectedStrategyId}
@@ -186,6 +190,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         mcpCredits={mcpCredits}
+        theme={theme}
+        onThemeChange={setTheme}
       />
 
       {/* Main Workspace Body */}
@@ -288,6 +294,27 @@ export default function App() {
         </div>
 
       </main>
+
+      {/* Footer */}
+      <footer className={`border-t py-6 px-4 transition-colors ${
+        theme === 'light' 
+          ? 'bg-white border-slate-200 text-slate-600' 
+          : 'bg-slate-900 border-slate-800 text-slate-400'
+      }`}>
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <span className="font-bold tracking-wide text-slate-200">PineStudio Pro</span>
+            <span className="text-slate-500">•</span>
+            <span>Quantitative Strategy Engine</span>
+          </div>
+
+          {/* Powered by Shadowflash Badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold tracking-tight text-[11px] shadow-sm">
+            <Zap className="w-3.5 h-3.5 fill-current text-emerald-400" />
+            <span>Powered by Shadowflash</span>
+          </div>
+        </div>
+      </footer>
 
       {/* Modals */}
       <AIGeneratorModal
