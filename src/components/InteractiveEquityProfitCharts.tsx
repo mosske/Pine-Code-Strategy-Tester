@@ -67,12 +67,33 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
   const [scrollOffset, setScrollOffset] = useState<number>(0); // 0 = newest data on the right
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   
-  // Marker configuration & options
-  const [markerMode, setMarkerMode] = useState<'AUTO' | 'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'OFF'>('AUTO');
-  const [showBenchmark, setShowBenchmark] = useState<boolean>(true);
-  const [showAthLine, setShowAthLine] = useState<boolean>(true);
+  // Marker configuration & options (Persisted in LocalStorage)
+  const [markerMode, setMarkerMode] = useState<'AUTO' | 'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'OFF'>(() => {
+    const saved = localStorage.getItem('pinestudio_marker_mode');
+    return (saved as any) || 'AUTO';
+  });
+  const [showBenchmark, setShowBenchmark] = useState<boolean>(() => {
+    const saved = localStorage.getItem('pinestudio_show_benchmark');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [showAthLine, setShowAthLine] = useState<boolean>(() => {
+    const saved = localStorage.getItem('pinestudio_show_ath_line');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [isSynced, setIsSynced] = useState<boolean>(true);
   const [selectedMarkerIndex, setSelectedMarkerIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_marker_mode', markerMode);
+  }, [markerMode]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_show_benchmark', String(showBenchmark));
+  }, [showBenchmark]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_show_ath_line', String(showAthLine));
+  }, [showAthLine]);
 
   // Dragging / touch pan state
   const containerRef = useRef<HTMLDivElement | null>(null);

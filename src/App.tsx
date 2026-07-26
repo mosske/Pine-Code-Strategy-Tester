@@ -15,9 +15,24 @@ import { PRESET_STRATEGIES } from './data/presetStrategies';
 import { generateCandles, runStrategyBacktest, runMcpBacktest, fetchMcpCredits } from './utils/backtestEngine';
 import { AssetSymbol, Timeframe, BacktestPeriod, StrategyInput, BacktestResult, PinePresetStrategy, TradingKitCredits } from './types';
 
+// Safe helper for reading localStorage state
+const getStoredValue = <T,>(key: string, defaultValue: T): T => {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved === null) return defaultValue;
+    return JSON.parse(saved) as T;
+  } catch {
+    return defaultValue;
+  }
+};
+
 export default function App() {
   // Theme State ('dark' | 'light' | 'designer')
-  const [theme, setTheme] = useState<'dark' | 'light' | 'designer'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light' | 'designer'>(() => {
+    const saved = localStorage.getItem('pinestudio_theme');
+    if (saved === 'dark' || saved === 'light' || saved === 'designer') return saved;
+    return 'dark';
+  });
 
   // Toast Notifications State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -31,31 +46,122 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Recommended Strategy Selection & State
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(PRESET_STRATEGIES[0].id);
-  const [strategyTitle, setStrategyTitle] = useState<string>(PRESET_STRATEGIES[0].title);
-  const [pineCode, setPineCode] = useState<string>(PRESET_STRATEGIES[0].pineCode);
-  const [inputs, setInputs] = useState<StrategyInput[]>(PRESET_STRATEGIES[0].inputs);
-  const [selectedAsset, setSelectedAsset] = useState<AssetSymbol>(PRESET_STRATEGIES[0].defaultAsset);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(PRESET_STRATEGIES[0].defaultTimeframe);
-  const [selectedPeriod, setSelectedPeriod] = useState<BacktestPeriod>(PRESET_STRATEGIES[0].defaultPeriod || '1Y');
+  // Strategy Selection & Settings State (Persisted in LocalStorage)
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
+    return localStorage.getItem('pinestudio_strategy_id') || PRESET_STRATEGIES[0].id;
+  });
+  const [strategyTitle, setStrategyTitle] = useState<string>(() => {
+    return localStorage.getItem('pinestudio_strategy_title') || PRESET_STRATEGIES[0].title;
+  });
+  const [pineCode, setPineCode] = useState<string>(() => {
+    return localStorage.getItem('pinestudio_pine_code') || PRESET_STRATEGIES[0].pineCode;
+  });
+  const [inputs, setInputs] = useState<StrategyInput[]>(() => {
+    return getStoredValue('pinestudio_inputs', PRESET_STRATEGIES[0].inputs);
+  });
+  const [selectedAsset, setSelectedAsset] = useState<AssetSymbol>(() => {
+    return (localStorage.getItem('pinestudio_selected_asset') as AssetSymbol) || PRESET_STRATEGIES[0].defaultAsset;
+  });
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(() => {
+    return (localStorage.getItem('pinestudio_selected_timeframe') as Timeframe) || PRESET_STRATEGIES[0].defaultTimeframe;
+  });
+  const [selectedPeriod, setSelectedPeriod] = useState<BacktestPeriod>(() => {
+    return (localStorage.getItem('pinestudio_selected_period') as BacktestPeriod) || PRESET_STRATEGIES[0].defaultPeriod || '1Y';
+  });
 
-  // Trading Costs & Account Capital
-  const [initialCapital, setInitialCapital] = useState<number>(10000);
-  const [commissionPct, setCommissionPct] = useState<number>(0.075);
-  const [slippagePct, setSlippagePct] = useState<number>(0.02);
-  const [tradeSizePct, setTradeSizePct] = useState<number>(20);
-  const [isCompounding, setIsCompounding] = useState<boolean>(false);
-  const [withdrawPct, setWithdrawPct] = useState<number>(0);
+  // Trading Costs & Account Capital Settings
+  const [initialCapital, setInitialCapital] = useState<number>(() => {
+    return getStoredValue('pinestudio_initial_capital', 10000);
+  });
+  const [commissionPct, setCommissionPct] = useState<number>(() => {
+    return getStoredValue('pinestudio_commission_pct', 0.075);
+  });
+  const [slippagePct, setSlippagePct] = useState<number>(() => {
+    return getStoredValue('pinestudio_slippage_pct', 0.02);
+  });
+  const [tradeSizePct, setTradeSizePct] = useState<number>(() => {
+    return getStoredValue('pinestudio_trade_size_pct', 20);
+  });
+  const [isCompounding, setIsCompounding] = useState<boolean>(() => {
+    return getStoredValue('pinestudio_is_compounding', false);
+  });
+  const [withdrawPct, setWithdrawPct] = useState<number>(() => {
+    return getStoredValue('pinestudio_withdraw_pct', 0);
+  });
 
   // TradingKit MCP Engine & Credits State
   const [mcpCredits, setMcpCredits] = useState<TradingKitCredits | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
 
   // UI Tabs & Selected Trade State
-  const [activeTab, setActiveTab] = useState<'chart' | 'editor' | 'report'>('chart');
+  const [activeTab, setActiveTab] = useState<'chart' | 'editor' | 'report'>(() => {
+    const saved = localStorage.getItem('pinestudio_active_tab');
+    if (saved === 'chart' || saved === 'editor' || saved === 'report') return saved;
+    return 'chart';
+  });
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
   const [isBacktesting, setIsBacktesting] = useState<boolean>(false);
+
+  // Auto-Save User Settings and Theme to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('pinestudio_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_strategy_id', selectedStrategyId);
+  }, [selectedStrategyId]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_strategy_title', strategyTitle);
+  }, [strategyTitle]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_pine_code', pineCode);
+  }, [pineCode]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_inputs', JSON.stringify(inputs));
+  }, [inputs]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_selected_asset', selectedAsset);
+  }, [selectedAsset]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_selected_timeframe', selectedTimeframe);
+  }, [selectedTimeframe]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_selected_period', selectedPeriod);
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_initial_capital', JSON.stringify(initialCapital));
+  }, [initialCapital]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_commission_pct', JSON.stringify(commissionPct));
+  }, [commissionPct]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_slippage_pct', JSON.stringify(slippagePct));
+  }, [slippagePct]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_trade_size_pct', JSON.stringify(tradeSizePct));
+  }, [tradeSizePct]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_is_compounding', JSON.stringify(isCompounding));
+  }, [isCompounding]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_withdraw_pct', JSON.stringify(withdrawPct));
+  }, [withdrawPct]);
+
+  useEffect(() => {
+    localStorage.setItem('pinestudio_active_tab', activeTab);
+  }, [activeTab]);
 
   // Modals Visibility
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState<boolean>(false);
