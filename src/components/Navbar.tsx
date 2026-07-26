@@ -17,7 +17,8 @@ import {
   Sun,
   Moon,
   Crown,
-  Palette
+  Palette,
+  RotateCcw
 } from 'lucide-react';
 import { AssetSymbol, Timeframe, BacktestPeriod, TradingKitCredits } from '../types';
 import { PRESET_STRATEGIES } from '../data/presetStrategies';
@@ -33,6 +34,7 @@ interface NavbarProps {
   onTimeframeChange: (timeframe: Timeframe) => void;
   onPeriodChange: (period: BacktestPeriod) => void;
   onRunBacktest: () => void;
+  onResetToRecommended?: () => void;
   onOpenAIGenerator: () => void;
   onOpenAudit: () => void;
   onOpenPythonExport: () => void;
@@ -56,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTimeframeChange,
   onPeriodChange,
   onRunBacktest,
+  onResetToRecommended,
   onOpenAIGenerator,
   onOpenAudit,
   onOpenPythonExport,
@@ -252,6 +255,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               </select>
             </div>
 
+            {/* Reset Defaults Button */}
+            <div className="flex flex-col">
+              <span className="text-[9px] text-emerald-400 font-mono font-bold flex items-center gap-0.5">
+                <RotateCcw className="w-2.5 h-2.5 inline" /> Action
+              </span>
+              <button
+                id="btn-reset-defaults-nav"
+                onClick={onResetToRecommended}
+                className="bg-slate-950 hover:bg-slate-900 border border-emerald-600/60 hover:border-emerald-500 text-emerald-300 font-bold text-xs rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                title="Reset all variable settings back to recommended strategy defaults"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Reset Defaults</span>
+              </button>
+            </div>
+
             {/* Theme Selector */}
             <div className="flex flex-col">
               <span className="text-[9px] text-slate-400 font-mono flex items-center gap-0.5">
@@ -400,6 +419,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <option value="8Y">8Y</option>
               <option value="10Y">10Y</option>
             </select>
+
+            <button
+              onClick={onResetToRecommended}
+              className="bg-slate-950 border border-emerald-600/60 text-emerald-300 font-bold text-xs rounded-lg px-2 py-1.5 flex items-center gap-1 active:scale-95 transition"
+              title="Reset Defaults"
+            >
+              <RotateCcw className="w-3 h-3 text-emerald-400" />
+              <span>Reset</span>
+            </button>
 
             <select
               value={theme}

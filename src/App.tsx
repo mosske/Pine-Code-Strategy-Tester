@@ -9,6 +9,7 @@ import { AIGeneratorModal } from './components/AIGeneratorModal';
 import { AIAuditModal } from './components/AIAuditModal';
 import { PythonExportModal } from './components/PythonExportModal';
 import { PresetsModal } from './components/PresetsModal';
+import { ToastContainer, ToastMessage } from './components/Toast';
 
 import { PRESET_STRATEGIES } from './data/presetStrategies';
 import { generateCandles, runStrategyBacktest, runMcpBacktest, fetchMcpCredits } from './utils/backtestEngine';
@@ -17,6 +18,18 @@ import { AssetSymbol, Timeframe, BacktestPeriod, StrategyInput, BacktestResult, 
 export default function App() {
   // Theme State ('dark' | 'light' | 'designer')
   const [theme, setTheme] = useState<'dark' | 'light' | 'designer'>('dark');
+
+  // Toast Notifications State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const addToast = useCallback((title: string, description?: string, icon: 'check' | 'reset' = 'check') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, type: 'success', title, description, icon }]);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   // Recommended Strategy Selection & State
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>(PRESET_STRATEGIES[0].id);
@@ -68,7 +81,7 @@ export default function App() {
   }, []);
 
   // Execute Backtest via TradingKit MCP (mcp.trader.dev) with local simulation fallback
-  const handleRunBacktest = useCallback(async () => {
+  const handleRunBacktest = useCallback(async (showToast = false) => {
     setIsBacktesting(true);
     setMcpError(null);
 
@@ -103,6 +116,10 @@ export default function App() {
       fetchMcpCredits().then((cred) => {
         if (cred) setMcpCredits(cred);
       });
+
+      if (showToast) {
+        addToast('Backtest complete', `${selectedAsset} (${selectedTimeframe}) backtest updated`, 'check');
+      }
     } catch (err: any) {
       console.warn('TradingKit MCP backtest fallback:', err.message);
       setMcpError(err.message || 'TradingKit MCP backtest unavailable; using local simulation.');
@@ -110,14 +127,18 @@ export default function App() {
       // 2. Fallback to local backtest engine if MCP is unavailable
       const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct);
       setBacktestResult(localRes);
+
+      if (showToast) {
+        addToast('Backtest complete', `${selectedAsset} (${selectedTimeframe}) simulation updated`, 'check');
+      }
     } finally {
       setIsBacktesting(false);
     }
-  }, [candles, inputs, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct]);
+  }, [candles, inputs, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, addToast]);
 
   // Re-run backtest whenever strategy, asset, timeframe, period, or key account parameters change
   useEffect(() => {
-    handleRunBacktest();
+    handleRunBacktest(false);
   }, [selectedStrategyId, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct]);
 
   // Parameter Change Handler (User edits variables for custom testing)
@@ -148,6 +169,7 @@ export default function App() {
   const handleResetToRecommended = () => {
     const found = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId) || PRESET_STRATEGIES[0];
     handleSelectPreset(found);
+    addToast('Reset to Defaults', `Variables restored to recommended defaults`, 'reset');
   };
 
   // AI Generated Strategy Apply Handler
@@ -193,7 +215,8 @@ export default function App() {
         onAssetChange={setSelectedAsset}
         onTimeframeChange={setSelectedTimeframe}
         onPeriodChange={setSelectedPeriod}
-        onRunBacktest={handleRunBacktest}
+        onRunBacktest={() => handleRunBacktest(true)}
+        onResetToRecommended={handleResetToRecommended}
         onOpenAIGenerator={() => setIsAIGeneratorOpen(true)}
         onOpenAudit={() => setIsAIAuditOpen(true)}
         onOpenPythonExport={() => setIsPythonExportOpen(true)}
@@ -304,7 +327,7 @@ export default function App() {
               onTimeframeChange={setSelectedTimeframe}
               selectedPeriod={selectedPeriod}
               onPeriodChange={setSelectedPeriod}
-              onRunBacktest={handleRunBacktest}
+              onRunBacktest={() => handleRunBacktest(true)}
               isBacktesting={isBacktesting}
             />
           </div>
@@ -362,6 +385,9 @@ export default function App() {
         onClose={() => setIsPresetsOpen(false)}
         onSelectPreset={handleSelectPreset}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
     </div>
   );
