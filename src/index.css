@@ -301,15 +301,54 @@
   color: #ffe066 !important;
 }
 
-/* Input select dropdowns & inputs inside dark header / dark containers */
-.designer-theme header#main-header select,
-.designer-theme header#main-header input {
+/* Explicit High Contrast Rule for Input Text, Number Boxes & Select Dropdowns in Designer Theme & Light Theme */
+.designer-theme select,
+.designer-theme #input-asset-select,
+.designer-theme #input-tf-select,
+.designer-theme #input-period-select,
+.designer-theme .bg-slate-950 select,
+.designer-theme .bg-slate-900 select,
+.designer-theme #strategy-inputs-panel select {
+  color: #1a1412 !important;
+  background-color: #ffffff !important;
+  border-color: #c5b49e !important;
+  font-weight: 700 !important;
+}
+
+.designer-theme select option {
+  background-color: #ffffff !important;
+  color: #1a1412 !important;
+}
+
+.designer-theme header#main-header select {
   background-color: #2b201a !important;
   color: #fcf9f2 !important;
   border-color: #e5be48 !important;
 }
 
-/* Explicit High Contrast Rule for Input Text & Number Boxes in Designer Theme & Light Theme */
+.designer-theme header#main-header select option {
+  background-color: #2b201a !important;
+  color: #fcf9f2 !important;
+}
+
+.light-theme select,
+.light-theme #input-asset-select,
+.light-theme #input-tf-select,
+.light-theme #input-period-select,
+.light-theme .bg-slate-950 select,
+.light-theme .bg-slate-900 select,
+.light-theme #strategy-inputs-panel select {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  font-weight: 700 !important;
+}
+
+.light-theme select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
 .designer-theme input[type="number"],
 .designer-theme input[type="text"],
 .designer-theme .bg-slate-950 input[type="number"],
@@ -328,11 +367,6 @@
   color: #0f172a !important;
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
-}
-
-.designer-theme select option {
-  background-color: #1a1412 !important;
-  color: #fcf9f2 !important;
 }
 
 /* Modal overlays in Designer Theme */
@@ -411,5 +445,195 @@
   background-color: #ffe4e6 !important;
   border-color: #fda4af !important;
   color: #9f1239 !important;
+}
+
+/* Toast Notification Overlay - High-Contrast Light Font across ALL Themes */
+.toast-notification-item,
+.light-theme .toast-notification-item,
+.designer-theme .toast-notification-item {
+  background-color: rgba(15, 23, 42, 0.96) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+}
+
+.toast-notification-item span,
+.toast-notification-item .toast-title,
+.light-theme .toast-notification-item .toast-title,
+.designer-theme .toast-notification-item .toast-title,
+.light-theme .toast-notification-item .text-slate-100,
+.designer-theme .toast-notification-item .text-slate-100,
+.light-theme .toast-notification-item .text-white,
+.designer-theme .toast-notification-item .text-white {
+  color: #f8fafc !important;
+}
+
+.toast-notification-item .toast-desc,
+.light-theme .toast-notification-item .toast-desc,
+.designer-theme .toast-notification-item .toast-desc,
+.light-theme .toast-notification-item .text-slate-400,
+.designer-theme .toast-notification-item .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.toast-notification-item button,
+.toast-notification-item .toast-dismiss-btn,
+.light-theme .toast-notification-item .toast-dismiss-btn,
+.designer-theme .toast-notification-item .toast-dismiss-btn {
+  color: #94a3b8 !important;
+}
+
+.toast-notification-item button:hover,
+.toast-notification-item .toast-dismiss-btn:hover,
+.light-theme .toast-notification-item .toast-dismiss-btn:hover,
+.designer-theme .toast-notification-item .toast-dismiss-btn:hover {
+  color: #f8fafc !important;
+}
+
+/* Chart Zoom Box & Reset Button controls - High contrast dark font and icons in Designer & Light Themes */
+.designer-theme .chart-zoom-box,
+.light-theme .chart-zoom-box {
+  background-color: #ffffff !important;
+  border-color: #d1c5b4 !important;
+}
+
+.designer-theme .chart-zoom-box *,
+.designer-theme .chart-zoom-box button,
+.designer-theme .chart-zoom-box button *,
+.designer-theme .chart-zoom-box span,
+.designer-theme .chart-zoom-box svg,
+.designer-theme .bg-slate-950 .chart-zoom-box *,
+.designer-theme .bg-slate-950 .chart-zoom-box button,
+.designer-theme .bg-slate-950 .chart-zoom-box button *,
+.designer-theme .bg-slate-950 .chart-zoom-box span,
+.designer-theme .bg-slate-950 .chart-zoom-box svg,
+.light-theme .chart-zoom-box *,
+.light-theme .chart-zoom-box button,
+.light-theme .chart-zoom-box button *,
+.light-theme .chart-zoom-box span,
+.light-theme .chart-zoom-box svg,
+.light-theme .bg-slate-950 .chart-zoom-box *,
+.light-theme .bg-slate-950 .chart-zoom-box button,
+.light-theme .bg-slate-950 .chart-zoom-box span,
+.light-theme .bg-slate-950 .chart-zoom-box svg {
+  color: #1a1412 !important;
+  stroke: #1a1412 !important;
+  font-weight: 700 !important;
+}
+
+.designer-theme .chart-zoom-box button:hover,
+.light-theme .chart-zoom-box button:hover {
+  background-color: #ebdcd0 !important;
+  color: #000000 !important;
+}
+
+.designer-theme .chart-zoom-box button:hover *,
+.light-theme .chart-zoom-box button:hover * {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Chart Navigation Arrow Buttons (Oldest, Back ChevronLeft, Forward ChevronRight, Latest) in Designer & Light Themes */
+.designer-theme .chart-nav-btn,
+.designer-theme .bg-slate-950 .chart-nav-btn,
+.designer-theme .bg-slate-900 .chart-nav-btn,
+.designer-theme .bg-[#1a1412] .chart-nav-btn,
+.light-theme .chart-nav-btn,
+.light-theme .bg-slate-950 .chart-nav-btn {
+  background-color: #ffffff !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+}
+
+.designer-theme .chart-nav-btn *,
+.designer-theme .chart-nav-btn span,
+.designer-theme .chart-nav-btn svg,
+.designer-theme .chart-nav-btn path,
+.designer-theme .bg-slate-950 .chart-nav-btn *,
+.designer-theme .bg-slate-950 .chart-nav-btn span,
+.designer-theme .bg-slate-950 .chart-nav-btn svg,
+.designer-theme .bg-slate-950 .chart-nav-btn path,
+.designer-theme .bg-slate-900 .chart-nav-btn *,
+.designer-theme .bg-[#1a1412] .chart-nav-btn *,
+.light-theme .chart-nav-btn *,
+.light-theme .chart-nav-btn span,
+.light-theme .chart-nav-btn svg,
+.light-theme .chart-nav-btn path,
+.light-theme .bg-slate-950 .chart-nav-btn * {
+  color: #047857 !important;
+  stroke: #047857 !important;
+  stroke-width: 2.8px !important;
+  font-weight: 700 !important;
+}
+
+.designer-theme .chart-nav-btn:hover,
+.light-theme .chart-nav-btn:hover {
+  background-color: #ecfdf5 !important;
+  border-color: #047857 !important;
+}
+
+.designer-theme .chart-nav-btn:hover *,
+.designer-theme .chart-nav-btn:hover svg,
+.designer-theme .chart-nav-btn:hover path,
+.light-theme .chart-nav-btn:hover *,
+.light-theme .chart-nav-btn:hover svg,
+.light-theme .chart-nav-btn:hover path {
+  color: #065f46 !important;
+  stroke: #065f46 !important;
+}
+
+.designer-theme .chart-nav-btn:disabled,
+.designer-theme .bg-slate-950 .chart-nav-btn:disabled,
+.designer-theme .bg-slate-900 .chart-nav-btn:disabled,
+.light-theme .chart-nav-btn:disabled {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  opacity: 0.55 !important;
+}
+
+.designer-theme .chart-nav-btn:disabled *,
+.designer-theme .chart-nav-btn:disabled span,
+.designer-theme .chart-nav-btn:disabled svg,
+.designer-theme .chart-nav-btn:disabled path,
+.light-theme .chart-nav-btn:disabled * {
+  color: #94a3b8 !important;
+  stroke: #94a3b8 !important;
+  stroke-width: 2px !important;
+}
+
+/* Mobile Hamburger Menu Button in Designer Theme */
+.designer-theme .mobile-menu-btn,
+.designer-theme #btn-mobile-menu-toggle {
+  background-color: #ffffff !important;
+  border-color: #d97706 !important;
+  color: #b45309 !important;
+  box-shadow: 0 1px 3px rgba(180, 83, 9, 0.15) !important;
+}
+
+.designer-theme .mobile-menu-btn *,
+.designer-theme .mobile-menu-btn svg,
+.designer-theme .mobile-menu-btn path,
+.designer-theme #btn-mobile-menu-toggle *,
+.designer-theme #btn-mobile-menu-toggle svg,
+.designer-theme #btn-mobile-menu-toggle path {
+  color: #b45309 !important;
+  stroke: #b45309 !important;
+  stroke-width: 2.8px !important;
+}
+
+.designer-theme .mobile-menu-btn:hover,
+.designer-theme #btn-mobile-menu-toggle:hover {
+  background-color: #fef3c7 !important;
+  border-color: #b45309 !important;
+}
+
+.designer-theme .mobile-menu-btn:hover *,
+.designer-theme .mobile-menu-btn:hover svg,
+.designer-theme .mobile-menu-btn:hover path,
+.designer-theme #btn-mobile-menu-toggle:hover *,
+.designer-theme #btn-mobile-menu-toggle:hover svg,
+.designer-theme #btn-mobile-menu-toggle:hover path {
+  color: #78350f !important;
+  stroke: #78350f !important;
 }
 

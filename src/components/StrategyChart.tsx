@@ -379,7 +379,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
           </button>
 
           {/* Zoom controls */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded p-0.5">
+          <div className="chart-zoom-box flex items-center bg-slate-900 border border-slate-800 rounded p-0.5">
             <button
               onClick={() => setVisibleCount((prev) => Math.min(candles.length, prev + 30))}
               className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded"
@@ -1007,7 +1007,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             <button
               onClick={() => setScrollOffset(maxScroll)}
               disabled={scrollOffset >= maxScroll}
-              className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 px-2 py-1 rounded transition"
+              className="chart-nav-btn flex items-center gap-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 px-2 py-1 rounded transition"
               title="Jump to Oldest Historical Data"
             >
               <SkipBack className="w-3 h-3 text-emerald-400" />
@@ -1017,7 +1017,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             <button
               onClick={() => setScrollOffset((prev) => Math.min(maxScroll, prev + 20))}
               disabled={scrollOffset >= maxScroll}
-              className="p-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 rounded transition"
+              className="chart-nav-btn p-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 rounded transition"
               title="Scroll Backwards in Time"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -1026,7 +1026,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             <button
               onClick={() => setScrollOffset((prev) => Math.max(0, prev - 20))}
               disabled={scrollOffset <= 0}
-              className="p-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 rounded transition"
+              className="chart-nav-btn p-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 rounded transition"
               title="Scroll Forwards in Time"
             >
               <ChevronRight className="w-4 h-4" />
@@ -1035,7 +1035,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
             <button
               onClick={() => setScrollOffset(0)}
               disabled={scrollOffset <= 0}
-              className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 px-2 py-1 rounded transition"
+              className="chart-nav-btn flex items-center gap-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 border border-slate-800 text-slate-300 px-2 py-1 rounded transition"
               title="Jump to Latest Present Data"
             >
               <span className="hidden sm:inline text-[11px]">Latest</span>

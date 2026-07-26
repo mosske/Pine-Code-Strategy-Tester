@@ -41,7 +41,7 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.9 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="pointer-events-auto flex items-center justify-between gap-3 bg-slate-900/95 border border-emerald-500/40 text-slate-100 p-3.5 rounded-xl shadow-2xl backdrop-blur-md"
+      className="toast-notification-item pointer-events-auto flex items-center justify-between gap-3 bg-slate-900/95 border border-emerald-500/40 text-slate-100 p-3.5 rounded-xl shadow-2xl backdrop-blur-md"
     >
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
@@ -52,16 +52,16 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
           )}
         </div>
         <div className="flex flex-col">
-          <span className="font-bold text-xs text-slate-100">{toast.title}</span>
+          <span className="toast-title font-bold text-xs text-slate-100">{toast.title}</span>
           {toast.description && (
-            <span className="text-[11px] text-slate-400 font-mono">{toast.description}</span>
+            <span className="toast-desc text-[11px] text-slate-400 font-mono">{toast.description}</span>
           )}
         </div>
       </div>
 
       <button
         onClick={() => onDismiss(toast.id)}
-        className="text-slate-400 hover:text-slate-200 p-1 rounded-lg transition"
+        className="toast-dismiss-btn text-slate-400 hover:text-slate-200 p-1 rounded-lg transition"
         aria-label="Close notification"
       >
         <X className="w-4 h-4" />

@@ -638,7 +638,7 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
           </button>
 
           {/* Zoom Buttons */}
-          <div className="flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5">
+          <div className="chart-zoom-box flex items-center bg-slate-950 rounded-lg border border-slate-800 p-0.5">
             <button
               onClick={zoomIn}
               className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition"
@@ -655,11 +655,11 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
             </button>
             <button
               onClick={resetZoom}
-              className="px-2 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-[11px] font-semibold transition flex items-center gap-1"
+              className="chart-reset-btn px-2 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-[11px] font-semibold transition flex items-center gap-1"
               title="Reset Zoom to Fit All"
             >
               <RotateCcw className="w-3 h-3 text-emerald-400" />
-              Reset
+              <span>Reset</span>
             </button>
           </div>
         </div>
