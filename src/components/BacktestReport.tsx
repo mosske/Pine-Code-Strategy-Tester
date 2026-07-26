@@ -13,7 +13,8 @@ import {
   Filter,
   Layers,
   Activity,
-  Banknote
+  Banknote,
+  Wallet
 } from 'lucide-react';
 
 interface BacktestReportProps {
@@ -134,8 +135,22 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         
+        {/* Total Account Balance Card */}
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
+            <span>Account Balance</span>
+            <Wallet className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-xl font-extrabold font-mono text-slate-100">
+            ${(result.initialCapital + result.netProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="text-xs text-slate-500 mt-1 font-mono truncate">
+            Principal (${result.initialCapital.toLocaleString()}) + Profit
+          </div>
+        </div>
+
         {/* Net Profit Card */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
           <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">

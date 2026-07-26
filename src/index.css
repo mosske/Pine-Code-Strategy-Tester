@@ -298,3 +298,64 @@
   fill: #3b2e27 !important;
 }
 
+/* Trade Details Banner Off-White Styling for Light and Designer Themes */
+.light-theme .trade-details-box {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.designer-theme .trade-details-box {
+  background-color: #fcfaf5 !important;
+  border-color: #e2d7c5 !important;
+  color: #1a1412 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Ensure text inside trade details box is crisp and high-contrast on off-white */
+.light-theme .trade-details-box .text-slate-100,
+.light-theme .trade-details-box .text-slate-200,
+.light-theme .trade-details-box .text-slate-300,
+.designer-theme .trade-details-box .text-slate-100,
+.designer-theme .trade-details-box .text-slate-200,
+.designer-theme .trade-details-box .text-slate-300 {
+  color: #0f172a !important;
+}
+
+.designer-theme .trade-details-box .text-slate-100,
+.designer-theme .trade-details-box .text-slate-200,
+.designer-theme .trade-details-box .text-slate-300 {
+  color: #1a1412 !important;
+}
+
+/* High contrast TP Target & SL Level badges against off-white background */
+.light-theme .trade-details-box .bg-emerald-900\/40,
+.designer-theme .trade-details-box .bg-emerald-900\/40 {
+  background-color: #e6f4ea !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+.light-theme .trade-details-box .bg-rose-900\/40,
+.designer-theme .trade-details-box .bg-rose-900\/40 {
+  background-color: #fce8e6 !important;
+  border-color: #fecdd3 !important;
+  color: #b91c1c !important;
+}
+
+/* Position Type badges (LONG / SHORT) in Light / Designer Theme */
+.light-theme .trade-details-box .bg-emerald-500\/20,
+.designer-theme .trade-details-box .bg-emerald-500\/20 {
+  background-color: #d1fae5 !important;
+  border-color: #6ee7b7 !important;
+  color: #065f46 !important;
+}
+
+.light-theme .trade-details-box .bg-rose-500\/20,
+.designer-theme .trade-details-box .bg-rose-500\/20 {
+  background-color: #ffe4e6 !important;
+  border-color: #fda4af !important;
+  color: #9f1239 !important;
+}
+

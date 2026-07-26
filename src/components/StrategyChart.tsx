@@ -403,7 +403,7 @@ export const StrategyChart: React.FC<StrategyChartProps> = ({
 
       {/* Selected Trade Info Banner */}
       {selectedTrade && (
-        <div className="bg-emerald-950/40 border border-emerald-600/50 rounded-lg p-2.5 px-3.5 text-xs flex flex-wrap items-center justify-between gap-3 shadow-inner">
+        <div className="trade-details-box bg-slate-950/80 border border-emerald-600/50 rounded-lg p-2.5 px-3.5 text-xs flex flex-wrap items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded font-bold text-[10px] uppercase font-mono ${selectedTrade.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
               {selectedTrade.type} POSITION
