@@ -68,7 +68,7 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   
   // Marker configuration & options
-  const [markerMode, setMarkerMode] = useState<'AUTO' | 'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'OFF'>('ALL');
+  const [markerMode, setMarkerMode] = useState<'AUTO' | 'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'OFF'>('AUTO');
   const [showBenchmark, setShowBenchmark] = useState<boolean>(true);
   const [showAthLine, setShowAthLine] = useState<boolean>(true);
   const [isSynced, setIsSynced] = useState<boolean>(true);
