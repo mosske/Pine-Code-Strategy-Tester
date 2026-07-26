@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BacktestResult, TradeLogItem } from '../types';
+import { InteractiveEquityProfitCharts } from './InteractiveEquityProfitCharts';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -38,39 +39,24 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
 
   const isProfitable = result.netProfit >= 0;
 
-  // Max and min for equity curve line SVG
-  const equityValues = result.equityCurve.map((e) => e.equity);
-  const benchmarkValues = result.equityCurve.map((e) => e.benchmark);
-  const allEqValues = [...equityValues, ...benchmarkValues];
+  // Compute maximum consecutive winning and losing streaks
+  const maxConsWins = result.maxConsecutiveWins ?? (() => {
+    let maxW = 0, curr = 0;
+    result.trades.forEach(t => {
+      if (t.pnl >= 0) { curr++; if (curr > maxW) maxW = curr; }
+      else { curr = 0; }
+    });
+    return maxW;
+  })();
 
-  const minEq = Math.min(...allEqValues) * 0.98;
-  const maxEq = Math.max(...allEqValues) * 1.02;
-
-  const svgWidth = 800;
-  const svgHeight = 220;
-
-  const getEqY = (val: number) => {
-    const range = maxEq - minEq || 1;
-    return svgHeight - ((val - minEq) / range) * (svgHeight - 20) - 10;
-  };
-
-  // Generate SVG Path for Strategy Equity Curve
-  let strategyPathD = '';
-  result.equityCurve.forEach((e, idx) => {
-    const x = (idx / (result.equityCurve.length - 1 || 1)) * svgWidth;
-    const y = getEqY(e.equity);
-    if (idx === 0) strategyPathD += `M ${x} ${y}`;
-    else strategyPathD += ` L ${x} ${y}`;
-  });
-
-  // Generate SVG Path for Buy & Hold Benchmark
-  let benchmarkPathD = '';
-  result.equityCurve.forEach((e, idx) => {
-    const x = (idx / (result.equityCurve.length - 1 || 1)) * svgWidth;
-    const y = getEqY(e.benchmark);
-    if (idx === 0) benchmarkPathD += `M ${x} ${y}`;
-    else benchmarkPathD += ` L ${x} ${y}`;
-  });
+  const maxConsLosses = result.maxConsecutiveLosses ?? (() => {
+    let maxL = 0, curr = 0;
+    result.trades.forEach(t => {
+      if (t.pnl < 0) { curr++; if (curr > maxL) maxL = curr; }
+      else { curr = 0; }
+    });
+    return maxL;
+  })();
 
   return (
     <div id="backtest-report-container" className="flex flex-col gap-6">
@@ -255,70 +241,8 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
 
       </div>
 
-      {/* Cumulative Equity Curve Chart vs Buy & Hold Benchmark */}
-      <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-xl flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              Cumulative Equity Growth vs Buy & Hold Benchmark
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Initial Capital: ${result.initialCapital.toLocaleString()} → Final Equity: ${result.finalEquity.toLocaleString()}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs font-mono">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-1 bg-emerald-400 rounded-full inline-block"></span>
-              <span className="text-emerald-300 font-bold">Strategy ({result.netProfitPercent}%)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-1 bg-amber-400/60 rounded-full inline-block"></span>
-              <span className="text-amber-300/80">Benchmark ({result.buyHoldReturnPercent}%)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* SVG Equity Line Chart */}
-        <div className="bg-slate-950 p-4 rounded-lg border border-slate-800/80">
-          <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto">
-            {/* Gridlines */}
-            {[0.25, 0.5, 0.75].map((ratio, idx) => (
-              <line
-                key={`eq-grid-${idx}`}
-                x1="0"
-                y1={svgHeight * ratio}
-                x2={svgWidth}
-                y2={svgHeight * ratio}
-                stroke="#1e293b"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-              />
-            ))}
-
-            {/* Benchmark Path */}
-            <path
-              d={benchmarkPathD}
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
-              opacity="0.65"
-            />
-
-            {/* Strategy Equity Path */}
-            <path
-              d={strategyPathD}
-              fill="none"
-              stroke={isProfitable ? '#10b981' : '#f43f5e'}
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-      </div>
+      {/* Interactive Time-Marked Equity Growth & Cumulative Profit Charts */}
+      <InteractiveEquityProfitCharts result={result} />
 
       {/* Trade Log Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col gap-4">
@@ -333,26 +257,39 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
             </p>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-lg text-xs font-medium">
-            <button
-              onClick={() => setTradeFilter('ALL')}
-              className={`px-3 py-1 rounded transition ${tradeFilter === 'ALL' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              All ({result.trades.length})
-            </button>
-            <button
-              onClick={() => setTradeFilter('WINNERS')}
-              className={`px-3 py-1 rounded transition ${tradeFilter === 'WINNERS' ? 'bg-emerald-950 text-emerald-300' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Winners ({result.winningTrades})
-            </button>
-            <button
-              onClick={() => setTradeFilter('LOSERS')}
-              className={`px-3 py-1 rounded transition ${tradeFilter === 'LOSERS' ? 'bg-rose-950 text-rose-300' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Losers ({result.losingTrades})
-            </button>
+          {/* Filter Tabs & Streak Stat Badges */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-lg text-xs font-medium">
+              <button
+                onClick={() => setTradeFilter('ALL')}
+                className={`px-3 py-1 rounded transition ${tradeFilter === 'ALL' ? 'bg-slate-800 text-slate-100 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                All ({result.trades.length})
+              </button>
+              <button
+                onClick={() => setTradeFilter('WINNERS')}
+                className={`px-3 py-1 rounded transition ${tradeFilter === 'WINNERS' ? 'bg-emerald-950 text-emerald-300 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Winners ({result.winningTrades})
+              </button>
+              <button
+                onClick={() => setTradeFilter('LOSERS')}
+                className={`px-3 py-1 rounded transition ${tradeFilter === 'LOSERS' ? 'bg-rose-950 text-rose-300 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Losers ({result.losingTrades})
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="px-2.5 py-1.5 bg-slate-950/80 border border-emerald-900/60 rounded-lg text-emerald-400 flex items-center gap-1.5 shadow-sm">
+                <span className="text-slate-400 font-sans text-[11px]">Max Cons. Winners:</span>
+                <span className="font-extrabold text-emerald-300">{maxConsWins}</span>
+              </span>
+              <span className="px-2.5 py-1.5 bg-slate-950/80 border border-rose-900/60 rounded-lg text-rose-400 flex items-center gap-1.5 shadow-sm">
+                <span className="text-slate-400 font-sans text-[11px]">Max Cons. Losers:</span>
+                <span className="font-extrabold text-rose-300">{maxConsLosses}</span>
+              </span>
+            </div>
           </div>
         </div>
 

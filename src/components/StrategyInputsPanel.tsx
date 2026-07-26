@@ -224,7 +224,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
             step="1"
             value={tradeSizePct}
             onChange={(e) => onTradeSizeChange(Math.max(1, Math.min(100, parseFloat(e.target.value) || 10)))}
-            className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-mono text-right text-xs rounded px-2 py-1"
+            className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-bold font-mono text-right text-xs rounded px-2 py-1"
           />
         </div>
 
@@ -239,7 +239,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
             step="0.005"
             value={commissionPct}
             onChange={(e) => onCommissionChange(parseFloat(e.target.value) || 0)}
-            className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-mono text-right text-xs rounded px-2 py-1"
+            className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-bold font-mono text-right text-xs rounded px-2 py-1"
           />
         </div>
 
@@ -254,7 +254,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
             step="0.005"
             value={slippagePct}
             onChange={(e) => onSlippageChange(parseFloat(e.target.value) || 0)}
-            className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-mono text-right text-xs rounded px-2 py-1"
+            className="w-20 bg-slate-900 border border-slate-700 text-slate-200 font-bold font-mono text-right text-xs rounded px-2 py-1"
           />
         </div>
 

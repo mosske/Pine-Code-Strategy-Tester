@@ -91,6 +91,41 @@
   fill: #334155 !important;
 }
 
+/* High-contrast dark mustard / amber-orange font & indicator overrides for Light Theme */
+.light-theme .text-amber-300,
+.light-theme .text-amber-400,
+.light-theme .text-amber-500,
+.light-theme .text-amber-600,
+.light-theme .text-amber-300\/90,
+.light-theme .text-amber-300\/80,
+.light-theme .text-yellow-300,
+.light-theme .text-yellow-400,
+.light-theme .text-yellow-500 {
+  color: #b45309 !important; /* Dark mustard/amber-orange (amber-700) for sharp readability on white/light backgrounds */
+}
+
+.light-theme .bg-amber-400,
+.light-theme .bg-amber-500 {
+  background-color: #d97706 !important; /* Darker amber indicator dots & lines */
+}
+
+.light-theme .border-amber-400,
+.light-theme .border-amber-500,
+.light-theme .border-amber-500\/50 {
+  border-color: #d97706 !important;
+}
+
+.light-theme .bg-amber-950\/60,
+.light-theme .bg-amber-950\/40 {
+  background-color: #fef3c7 !important; /* Soft warm light amber badge background */
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+
+.light-theme path[stroke="#f59e0b"] {
+  stroke: #d97706 !important; /* Darker benchmark dotted line in Light Theme */
+}
+
 /* Designer Theme - High-End Luxury Aesthetic (Off-white, Dark Espresso Brown, Warm Gold) */
 .designer-theme {
   color-scheme: light;
@@ -266,14 +301,33 @@
   color: #ffe066 !important;
 }
 
-/* Input select dropdowns inside dark containers */
-.designer-theme .bg-slate-950 select,
-.designer-theme .bg-slate-950 input[type="text"],
+/* Input select dropdowns & inputs inside dark header / dark containers */
 .designer-theme header#main-header select,
 .designer-theme header#main-header input {
   background-color: #2b201a !important;
   color: #fcf9f2 !important;
   border-color: #e5be48 !important;
+}
+
+/* Explicit High Contrast Rule for Input Text & Number Boxes in Designer Theme & Light Theme */
+.designer-theme input[type="number"],
+.designer-theme input[type="text"],
+.designer-theme .bg-slate-950 input[type="number"],
+.designer-theme .bg-slate-950 input[type="text"],
+.designer-theme .bg-slate-950 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  color: #1a1412 !important;
+  background-color: #ffffff !important;
+  border-color: #d8c8b4 !important;
+}
+
+.light-theme input[type="number"],
+.light-theme input[type="text"],
+.light-theme .bg-slate-950 input[type="number"],
+.light-theme .bg-slate-950 input[type="text"],
+.light-theme .bg-slate-950 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
 }
 
 .designer-theme select option {
