@@ -66,8 +66,12 @@ function pseudoRandom(seed: number) {
 const ASSET_CONFIGS: Record<AssetSymbol, { basePrice: number; volatility: number; trend: number; volumeBase: number }> = {
   'BTC/USDT': { basePrice: 64500, volatility: 0.016, trend: 0.0006, volumeBase: 1250 },
   'ETH/USDT': { basePrice: 3450, volatility: 0.020, trend: 0.0007, volumeBase: 8500 },
+  'SOL/USDT': { basePrice: 185, volatility: 0.028, trend: 0.0012, volumeBase: 42000 },
+  'BNB/USDT': { basePrice: 580, volatility: 0.018, trend: 0.0005, volumeBase: 15000 },
   'EUR/USD': { basePrice: 1.085, volatility: 0.003, trend: 0.00004, volumeBase: 250000 },
+  'GBP/USD': { basePrice: 1.285, volatility: 0.004, trend: 0.00005, volumeBase: 180000 },
   'XAU/USD': { basePrice: 2380, volatility: 0.007, trend: 0.0003, volumeBase: 18000 },
+  'SPY': { basePrice: 545, volatility: 0.008, trend: 0.0004, volumeBase: 65000 },
 };
 
 // Generate realistic synthetic OHLCV candles

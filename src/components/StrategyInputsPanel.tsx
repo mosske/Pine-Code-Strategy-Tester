@@ -1,11 +1,14 @@
 import React from 'react';
 import { StrategyInput, AssetSymbol, Timeframe, BacktestPeriod } from '../types';
-import { Sliders, DollarSign, Percent, RotateCcw, Zap, Calendar, Award } from 'lucide-react';
+import { Sliders, DollarSign, Percent, RotateCcw, Zap, Calendar, Award, BookOpen } from 'lucide-react';
+import { PRESET_STRATEGIES } from '../data/presetStrategies';
 
 interface StrategyInputsPanelProps {
   inputs: StrategyInput[];
   onInputChange: (id: string, value: any) => void;
   onResetToRecommended: () => void;
+  selectedStrategyId?: string;
+  onSelectStrategyById?: (id: string) => void;
   initialCapital: number;
   onCapitalChange: (cap: number) => void;
   tradeSizePct: number;
@@ -32,6 +35,8 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
   inputs,
   onInputChange,
   onResetToRecommended,
+  selectedStrategyId,
+  onSelectStrategyById,
   initialCapital,
   onCapitalChange,
   tradeSizePct,
@@ -63,6 +68,9 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
   };
 
   const [capitalText, setCapitalText] = React.useState<string>(() => formatCapitalDisplay(initialCapital));
+
+  const activeStrategy = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId);
+  const recommendedPairs = activeStrategy?.recommendedPairs || [];
 
   React.useEffect(() => {
     const cleanCurrent = capitalText.replace(/,/g, '');
@@ -124,6 +132,38 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
         </button>
       </div>
 
+      {/* Strategy Selector Dropdown Card */}
+      {onSelectStrategyById && (
+        <div className="flex flex-col gap-2 bg-gradient-to-r from-emerald-950/50 to-slate-950 p-3 rounded-xl border border-emerald-700/40 shadow-inner">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Award className="w-3.5 h-3.5 text-emerald-400" />
+              Strategy Model
+            </span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-medium">
+              {PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId)?.category || 'Strategy'}
+            </span>
+          </div>
+
+          <select
+            id="panel-strategy-selector"
+            value={selectedStrategyId || ''}
+            onChange={(e) => onSelectStrategyById(e.target.value)}
+            className="w-full bg-slate-900 border border-emerald-600/60 text-slate-100 font-semibold text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm cursor-pointer"
+          >
+            {PRESET_STRATEGIES.map((strat) => (
+              <option key={strat.id} value={strat.id}>
+                ⭐ {strat.title}
+              </option>
+            ))}
+          </select>
+
+          <p className="text-[11px] text-slate-400 leading-snug">
+            {PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId)?.description}
+          </p>
+        </div>
+      )}
+
       {/* Backtest Range & Recommended Pairs Configuration */}
       <div className="flex flex-col gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
         <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -150,23 +190,72 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
           </select>
         </div>
 
-        {/* Asset Pair Selection (Recommended Only) */}
+        {/* Asset Pair Selection with Recommended Star Indicators */}
         <div className="flex items-center justify-between text-xs">
-          <label htmlFor="input-asset-select" className="text-slate-300 font-medium">
-            Asset Pair
+          <label htmlFor="input-asset-select" className="text-slate-300 font-medium flex items-center gap-1.5">
+            <span>Asset Pair</span>
+            {recommendedPairs.includes(selectedAsset) && (
+              <span className="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 border border-amber-500/30">
+                ⭐ Recommended
+              </span>
+            )}
           </label>
           <select
             id="input-asset-select"
             value={selectedAsset}
             onChange={(e) => onAssetChange(e.target.value as AssetSymbol)}
-            className="bg-slate-900 border border-slate-700 text-slate-200 font-bold font-mono text-xs rounded px-2 py-1"
+            className={`bg-slate-900 border text-slate-200 font-bold font-mono text-xs rounded px-2 py-1.5 focus:outline-none ${
+              recommendedPairs.includes(selectedAsset)
+                ? 'border-amber-500/60 text-amber-200 ring-1 ring-amber-500/30'
+                : 'border-slate-700'
+            }`}
           >
-            <option value="BTC/USDT">BTC/USDT</option>
-            <option value="ETH/USDT">ETH/USDT</option>
-            <option value="EUR/USD">EUR/USD</option>
-            <option value="XAU/USD">XAU/USD (Gold)</option>
+            <option value="BTC/USDT">{recommendedPairs.includes('BTC/USDT') ? '⭐ BTC/USDT (Recommended)' : 'BTC/USDT'}</option>
+            <option value="ETH/USDT">{recommendedPairs.includes('ETH/USDT') ? '⭐ ETH/USDT (Recommended)' : 'ETH/USDT'}</option>
+            <option value="SOL/USDT">{recommendedPairs.includes('SOL/USDT') ? '⭐ SOL/USDT (Recommended)' : 'SOL/USDT'}</option>
+            <option value="BNB/USDT">{recommendedPairs.includes('BNB/USDT') ? '⭐ BNB/USDT (Recommended)' : 'BNB/USDT'}</option>
+            <option value="EUR/USD">{recommendedPairs.includes('EUR/USD') ? '⭐ EUR/USD (Recommended)' : 'EUR/USD'}</option>
+            <option value="GBP/USD">{recommendedPairs.includes('GBP/USD') ? '⭐ GBP/USD (Recommended)' : 'GBP/USD'}</option>
+            <option value="XAU/USD">{recommendedPairs.includes('XAU/USD') ? '⭐ XAU/USD (Gold)' : 'XAU/USD (Gold)'}</option>
+            <option value="SPY">{recommendedPairs.includes('SPY') ? '⭐ SPY (SPDR S&P 500 ETF TRUST)' : 'SPY (SPDR S&P 500 ETF TRUST)'}</option>
           </select>
         </div>
+
+        {/* Strategy Recommended Pair Quick-Select Badges */}
+        {recommendedPairs.length > 0 && (
+          <div className="flex flex-col gap-1.5 bg-slate-900/90 p-2.5 rounded-lg border border-amber-500/30 shadow-sm mt-1">
+            <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              ⭐ Recommended Pairs for Model
+            </span>
+            <div className="flex flex-wrap gap-1.5 mt-0.5">
+              {recommendedPairs.map((pair) => {
+                const isSelected = selectedAsset === pair;
+                const pairNote = activeStrategy?.pairConfigs?.[pair]?.notes;
+                return (
+                  <button
+                    key={pair}
+                    type="button"
+                    onClick={() => onAssetChange(pair)}
+                    className={`text-[11px] px-2.5 py-1 rounded-md font-mono font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm scale-[1.02]'
+                        : 'bg-slate-800 text-amber-200 hover:bg-slate-700 border border-amber-500/20'
+                    }`}
+                    title={pairNote || `Select ${pair} to auto-load optimal strategy settings`}
+                  >
+                    <span>⭐ {pair}</span>
+                    {isSelected && <span className="text-[9px] bg-slate-950/40 text-amber-100 px-1 rounded">Active</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {activeStrategy?.pairConfigs?.[selectedAsset]?.notes && (
+              <p className="text-[10px] text-amber-300/90 italic font-mono mt-0.5">
+                ⚡ Auto-Applied: {activeStrategy.pairConfigs[selectedAsset]?.notes}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Timeframe */}
         <div className="flex items-center justify-between text-xs">

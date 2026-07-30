@@ -254,15 +254,89 @@ export default function App() {
     );
   };
 
+  // Helper to apply pair-specific parameter overrides if available
+  const applyPairSpecificConfig = (
+    strategy: PinePresetStrategy,
+    asset: AssetSymbol,
+    baseInputs: StrategyInput[]
+  ) => {
+    const pairConfig = strategy.pairConfigs?.[asset];
+    if (pairConfig) {
+      if (pairConfig.timeframe) {
+        setSelectedTimeframe(pairConfig.timeframe);
+      }
+      if (pairConfig.period) {
+        setSelectedPeriod(pairConfig.period);
+      }
+      if (pairConfig.inputs) {
+        const updatedInputs = baseInputs.map((baseInp) => {
+          const overrideVal = pairConfig.inputs?.[baseInp.id];
+          return {
+            ...baseInp,
+            value: overrideVal !== undefined ? overrideVal : baseInp.value,
+          };
+        });
+        setInputs(updatedInputs);
+      } else {
+        setInputs(baseInputs.map((inp) => ({ ...inp })));
+      }
+    } else {
+      setInputs(baseInputs.map((inp) => ({ ...inp })));
+    }
+  };
+
   // Select Preset/Strategy Handler (Auto-populates and resets variables to recommended defaults)
   const handleSelectPreset = (preset: PinePresetStrategy) => {
     setSelectedStrategyId(preset.id);
     setStrategyTitle(preset.title);
     setPineCode(preset.pineCode);
-    setInputs(preset.inputs.map((inp) => ({ ...inp })));
-    setSelectedAsset(preset.defaultAsset);
+    const targetAsset = preset.defaultAsset;
+    setSelectedAsset(targetAsset);
+
+    // Set fallback timeframe and period
     setSelectedTimeframe(preset.defaultTimeframe);
     setSelectedPeriod(preset.defaultPeriod || '1Y');
+
+    // Apply pair-specific parameters if configured
+    applyPairSpecificConfig(preset, targetAsset, preset.inputs);
+  };
+
+  // Asset Pair Change Handler (Auto-applies strategy settings tuned for that pair)
+  const handleAssetChange = (newAsset: AssetSymbol) => {
+    setSelectedAsset(newAsset);
+    const currentStrat = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId);
+    if (!currentStrat) return;
+
+    const pairConfig = currentStrat.pairConfigs?.[newAsset];
+    if (pairConfig) {
+      if (pairConfig.timeframe) {
+        setSelectedTimeframe(pairConfig.timeframe);
+      }
+      if (pairConfig.period) {
+        setSelectedPeriod(pairConfig.period);
+      }
+      if (pairConfig.inputs) {
+        setInputs(
+          currentStrat.inputs.map((baseInp) => {
+            const overrideVal = pairConfig.inputs?.[baseInp.id];
+            return {
+              ...baseInp,
+              value: overrideVal !== undefined ? overrideVal : baseInp.value,
+            };
+          })
+        );
+      }
+      const noteStr = pairConfig.notes ? ` (${pairConfig.notes})` : '';
+      addToast(
+        'Optimal Pair Parameters Applied',
+        `Configured settings for ${newAsset}${noteStr}`,
+        'info'
+      );
+    } else {
+      // Revert to strategy base defaults for uncalibrated pair
+      setInputs(currentStrat.inputs.map((inp) => ({ ...inp })));
+      addToast('Asset Pair Changed', `Switched active pair to ${newAsset}`, 'info');
+    }
   };
 
   // Select Strategy by ID from Top Dropdown
@@ -318,7 +392,7 @@ export default function App() {
         selectedAsset={selectedAsset}
         selectedTimeframe={selectedTimeframe}
         selectedPeriod={selectedPeriod}
-        onAssetChange={setSelectedAsset}
+        onAssetChange={handleAssetChange}
         onTimeframeChange={setSelectedTimeframe}
         onPeriodChange={setSelectedPeriod}
         onRunBacktest={() => handleRunBacktest(true)}
@@ -415,6 +489,8 @@ export default function App() {
               inputs={inputs}
               onInputChange={handleInputChange}
               onResetToRecommended={handleResetToRecommended}
+              selectedStrategyId={selectedStrategyId}
+              onSelectStrategyById={handleSelectStrategyById}
               initialCapital={initialCapital}
               onCapitalChange={setInitialCapital}
               tradeSizePct={tradeSizePct}
@@ -428,7 +504,7 @@ export default function App() {
               withdrawPct={withdrawPct}
               onWithdrawPctChange={setWithdrawPct}
               selectedAsset={selectedAsset}
-              onAssetChange={setSelectedAsset}
+              onAssetChange={handleAssetChange}
               selectedTimeframe={selectedTimeframe}
               onTimeframeChange={setSelectedTimeframe}
               selectedPeriod={selectedPeriod}

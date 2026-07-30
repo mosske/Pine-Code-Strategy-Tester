@@ -73,6 +73,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
+
+  const activeStrategy = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId);
+  const recommendedPairs = activeStrategy?.recommendedPairs || [];
   const [showIosPrompt, setShowIosPrompt] = useState<boolean>(false);
 
   // Listen for PWA beforeinstallprompt event
@@ -204,17 +207,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="hidden lg:flex items-center gap-2 shrink-0">
             {/* Asset Selector */}
             <div className="flex flex-col">
-              <span className="text-[9px] text-slate-400 font-mono">Asset</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-slate-400 font-mono">Asset Pair</span>
+                {recommendedPairs.includes(selectedAsset) && (
+                  <span className="text-[10px] text-amber-400 font-bold" title="Recommended pair for selected strategy">⭐</span>
+                )}
+              </div>
               <select
                 id="select-asset"
                 value={selectedAsset}
                 onChange={(e) => onAssetChange(e.target.value as AssetSymbol)}
-                className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono font-bold"
+                className={`bg-slate-950 border text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono font-bold ${
+                  recommendedPairs.includes(selectedAsset) ? 'border-amber-500/60 text-amber-200' : 'border-slate-800'
+                }`}
               >
-                <option value="BTC/USDT">BTC/USDT</option>
-                <option value="ETH/USDT">ETH/USDT</option>
-                <option value="EUR/USD">EUR/USD</option>
-                <option value="XAU/USD">XAU/USD (Gold)</option>
+                <option value="BTC/USDT">{recommendedPairs.includes('BTC/USDT') ? '⭐ BTC/USDT' : 'BTC/USDT'}</option>
+                <option value="ETH/USDT">{recommendedPairs.includes('ETH/USDT') ? '⭐ ETH/USDT' : 'ETH/USDT'}</option>
+                <option value="SOL/USDT">{recommendedPairs.includes('SOL/USDT') ? '⭐ SOL/USDT' : 'SOL/USDT'}</option>
+                <option value="BNB/USDT">{recommendedPairs.includes('BNB/USDT') ? '⭐ BNB/USDT' : 'BNB/USDT'}</option>
+                <option value="EUR/USD">{recommendedPairs.includes('EUR/USD') ? '⭐ EUR/USD' : 'EUR/USD'}</option>
+                <option value="GBP/USD">{recommendedPairs.includes('GBP/USD') ? '⭐ GBP/USD' : 'GBP/USD'}</option>
+                <option value="XAU/USD">{recommendedPairs.includes('XAU/USD') ? '⭐ XAU/USD (Gold)' : 'XAU/USD (Gold)'}</option>
+                <option value="SPY">{recommendedPairs.includes('SPY') ? '⭐ SPY (SPDR S&P 500 ETF TRUST)' : 'SPY (SPDR S&P 500 ETF TRUST)'}</option>
               </select>
             </div>
 
@@ -387,12 +401,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <select
               value={selectedAsset}
               onChange={(e) => onAssetChange(e.target.value as AssetSymbol)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-1.5 py-1.5 font-mono font-bold"
+              className={`bg-slate-950 border text-slate-200 text-xs rounded-lg px-1.5 py-1.5 font-mono font-bold ${
+                recommendedPairs.includes(selectedAsset) ? 'border-amber-500/60 text-amber-200' : 'border-slate-800'
+              }`}
             >
-              <option value="BTC/USDT">BTC</option>
-              <option value="ETH/USDT">ETH</option>
-              <option value="EUR/USD">EUR</option>
-              <option value="XAU/USD">XAU</option>
+              <option value="BTC/USDT">{recommendedPairs.includes('BTC/USDT') ? '⭐ BTC/USDT' : 'BTC/USDT'}</option>
+              <option value="ETH/USDT">{recommendedPairs.includes('ETH/USDT') ? '⭐ ETH/USDT' : 'ETH/USDT'}</option>
+              <option value="SOL/USDT">{recommendedPairs.includes('SOL/USDT') ? '⭐ SOL/USDT' : 'SOL/USDT'}</option>
+              <option value="BNB/USDT">{recommendedPairs.includes('BNB/USDT') ? '⭐ BNB/USDT' : 'BNB/USDT'}</option>
+              <option value="EUR/USD">{recommendedPairs.includes('EUR/USD') ? '⭐ EUR/USD' : 'EUR/USD'}</option>
+              <option value="GBP/USD">{recommendedPairs.includes('GBP/USD') ? '⭐ GBP/USD' : 'GBP/USD'}</option>
+              <option value="XAU/USD">{recommendedPairs.includes('XAU/USD') ? '⭐ XAU/USD' : 'XAU/USD'}</option>
+              <option value="SPY">{recommendedPairs.includes('SPY') ? '⭐ SPY (SPDR S&P 500 ETF TRUST)' : 'SPY (SPDR S&P 500 ETF TRUST)'}</option>
             </select>
 
             <select

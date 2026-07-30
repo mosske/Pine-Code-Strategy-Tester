@@ -1,6 +1,6 @@
 export type Timeframe = '1m' | '5m' | '15m' | '1H' | '4H' | '1D';
 
-export type AssetSymbol = 'BTC/USDT' | 'ETH/USDT' | 'EUR/USD' | 'XAU/USD';
+export type AssetSymbol = 'BTC/USDT' | 'ETH/USDT' | 'SOL/USDT' | 'BNB/USDT' | 'EUR/USD' | 'GBP/USD' | 'XAU/USD' | 'SPY';
 
 export type BacktestPeriod = '1Y' | '3Y' | '5Y' | '8Y' | '10Y';
 
@@ -111,6 +111,13 @@ export interface TradingKitCredits {
   message?: string;
 }
 
+export interface PairConfigOverride {
+  timeframe?: Timeframe;
+  period?: BacktestPeriod;
+  inputs?: Record<string, number | string | boolean>;
+  notes?: string;
+}
+
 export interface PinePresetStrategy {
   id: string;
   title: string;
@@ -120,6 +127,8 @@ export interface PinePresetStrategy {
   defaultAsset: AssetSymbol;
   defaultTimeframe: Timeframe;
   defaultPeriod?: BacktestPeriod;
+  recommendedPairs?: AssetSymbol[];
+  pairConfigs?: Partial<Record<AssetSymbol, PairConfigOverride>>;
   inputs: StrategyInput[];
 }
 
