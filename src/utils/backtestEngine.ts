@@ -114,9 +114,9 @@ export function generateCandles(
   const targetBarsPerYear = baseBarsPerYear[timeframe] || 6000;
   const barCount = targetBarsPerYear * years;
 
-  // Exact period timestamps (July 2026 current date baseline)
+  // Exact period timestamps (Current live baseline up to today)
   const totalSpanMs = years * 365.25 * 24 * 3600 * 1000;
-  const endTime = new Date(2026, 6, 24, 16, 0).getTime();
+  const endTime = Date.now();
   const startTime = endTime - totalSpanMs;
   const stepMs = totalSpanMs / barCount;
 
