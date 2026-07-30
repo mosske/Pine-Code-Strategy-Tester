@@ -131,18 +131,29 @@ export function generateCandles(
   const timeframeFactor = Math.sqrt(stepMs / (24 * 60 * 60 * 1000));
   const barVol = config.volatility * timeframeFactor * 2.2;
 
+  let trendDirection = 1;
+  let trendDuration = 0;
+  let currentMomentum = 0;
+
   for (let i = 0; i < barCount; i++) {
     // Macro cycle baseline spans exact requested years
     const cycleProgress = (i / barCount);
-    const macroBaseline = config.basePrice * (1 + Math.sin(cycleProgress * Math.PI * 4 * years) * 0.18 + Math.cos(cycleProgress * Math.PI * 2 * years) * 0.10 + cycleProgress * 0.15 * years);
+    const macroBaseline = config.basePrice * (1 + Math.sin(cycleProgress * Math.PI * 4 * years) * 0.22 + Math.cos(cycleProgress * Math.PI * 2 * years) * 0.12 + cycleProgress * 0.20 * years);
     
     // Mean reversion force towards macro baseline prevents exponential blowup over multi-year periods
-    const meanRevertDrift = (macroBaseline - currentPrice) / (currentPrice * 15);
+    const meanRevertDrift = (macroBaseline - currentPrice) / (currentPrice * 18);
     
-    // Micro wave dynamics
-    const microWave = (Math.sin(i / 8) * 0.35 + Math.cos(i / 18) * 0.45 + Math.sin(i / 3) * 0.25) * barVol;
-    const noise = (rng() - 0.492) * barVol;
-    const changePct = meanRevertDrift + microWave + noise;
+    // Smooth trend regime persistence with noise for realistic technical indicator crossovers
+    if (trendDuration <= 0) {
+      trendDirection = rng() > 0.48 ? 1 : -1;
+      trendDuration = Math.floor(12 + rng() * 28);
+    }
+    trendDuration--;
+
+    const rawNoise = (rng() - 0.49) * barVol;
+    currentMomentum = 0.72 * currentMomentum + 0.28 * (trendDirection * barVol * 0.35 + rawNoise);
+    const microWave = (Math.sin(i / 10) * 0.20 + Math.cos(i / 22) * 0.25) * barVol;
+    const changePct = meanRevertDrift + microWave + currentMomentum;
 
     const open = currentPrice;
     let close = open * (1 + changePct);
@@ -151,8 +162,8 @@ export function generateCandles(
     const maxOC = Math.max(open, close);
     const minOC = Math.min(open, close);
 
-    const high = maxOC + (rng() * barVol * open * 0.8);
-    const low = Math.max(0.0001, minOC - (rng() * barVol * open * 0.8));
+    const high = maxOC + (rng() * barVol * open * 0.5);
+    const low = Math.max(0.0001, minOC - (rng() * barVol * open * 0.5));
 
     const volume = Math.round(config.volumeBase * (0.6 + rng() * 0.8 + (high - low) / (open * 0.001)));
 
@@ -248,6 +259,60 @@ export function calcRSI(prices: number[], period: number = 14): (number | null)[
   return result;
 }
 
+export function calcStochastic(candles: Candle[], period: number = 14, smoothK: number = 3, smoothD: number = 3) {
+  const kRaw: (number | null)[] = new Array(candles.length).fill(null);
+  for (let i = period - 1; i < candles.length; i++) {
+    let highest = -Infinity;
+    let lowest = Infinity;
+    for (let j = i - period + 1; j <= i; j++) {
+      if (candles[j].high > highest) highest = candles[j].high;
+      if (candles[j].low < lowest) lowest = candles[j].low;
+    }
+    const range = highest - lowest;
+    if (range === 0) {
+      kRaw[i] = 50;
+    } else {
+      kRaw[i] = ((candles[i].close - lowest) / range) * 100;
+    }
+  }
+
+  const validKIndices: number[] = [];
+  const kNonNullable: number[] = [];
+  for (let i = 0; i < kRaw.length; i++) {
+    if (kRaw[i] !== null) {
+      validKIndices.push(i);
+      kNonNullable.push(kRaw[i] as number);
+    }
+  }
+
+  const kSma = calcSMA(kNonNullable, smoothK);
+  const stochK: (number | null)[] = new Array(candles.length).fill(null);
+  for (let m = 0; m < kSma.length; m++) {
+    if (kSma[m] !== null) {
+      stochK[validKIndices[m]] = kSma[m];
+    }
+  }
+
+  const validKSmIndices: number[] = [];
+  const kSmNonNullable: number[] = [];
+  for (let i = 0; i < stochK.length; i++) {
+    if (stochK[i] !== null) {
+      validKSmIndices.push(i);
+      kSmNonNullable.push(stochK[i] as number);
+    }
+  }
+
+  const dSma = calcSMA(kSmNonNullable, smoothD);
+  const stochD: (number | null)[] = new Array(candles.length).fill(null);
+  for (let m = 0; m < dSma.length; m++) {
+    if (dSma[m] !== null) {
+      stochD[validKSmIndices[m]] = dSma[m];
+    }
+  }
+
+  return { stochK, stochD };
+}
+
 export function calcATR(candles: Candle[], period: number = 14): (number | null)[] {
   const result: (number | null)[] = new Array(candles.length).fill(null);
   if (candles.length < period + 1) return result;
@@ -322,20 +387,36 @@ export function runBacktest(
     inputValues[inp.id] = inp.value;
   });
 
+  const tpInput = Number(inputValues.takeProfitPct ?? inputValues.takeProfit ?? inputValues.tp ?? 2.5);
+  const slInput = Number(inputValues.stopLossPct ?? inputValues.stopLoss ?? inputValues.sl ?? 1.2);
+  const tpPct = Math.max(0.001, tpInput / 100);
+  const slPct = Math.max(0.001, slInput / 100);
+
+  const stochPeriod = Number(inputValues.stochPeriod || 19);
+  const smoothK = Number(inputValues.smoothK || 4);
+  const smoothD = Number(inputValues.smoothD || 4);
+  const overbought = Number(inputValues.overbought || 80);
+  const oversold = Number(inputValues.oversold || 20);
+
   const fastLen = Number(inputValues.fastLength || inputValues.fastLen || 8);
   const slowLen = Number(inputValues.slowLength || inputValues.slowLen || 21);
-  const rsiLen = Number(inputValues.rsiLength || 14);
+  const trendLen = Number(inputValues.trendLength || 50);
+  const rsiLen = Number(inputValues.rsiLength || inputValues.rsiPeriod || 14);
 
   const fastEma = calcEMA(prices, fastLen);
   const slowEma = calcEMA(prices, slowLen);
+  const trendEma = calcEMA(prices, trendLen);
   const rsiValues = calcRSI(prices, rsiLen);
+  const { stochK, stochD } = calcStochastic(candles, stochPeriod, smoothK, smoothD);
+
+  const isStochStrategy = pineScriptCode.toLowerCase().includes('stoch') || inputValues.stochPeriod !== undefined;
+  const isRsiMeanRev = !isStochStrategy && (pineScriptCode.toLowerCase().includes('mean reversion') || (inputValues.rsiPeriod !== undefined && inputValues.fastLength === undefined));
+  const isScalper = !isStochStrategy && !isRsiMeanRev;
 
   const startPrice = candles[0].close;
-  const startIndex = Math.max(fastLen, slowLen, rsiLen, 20);
+  const startIndex = Math.max(fastLen, slowLen, trendLen, stochPeriod + smoothK + smoothD, 20);
 
   const totalBars = candles.length;
-  const stepBars = 28;
-
   const trades: TradeLogItem[] = [];
   let currentEquity = initialCapital;
   let totalWithdrawn = 0;
@@ -355,59 +436,109 @@ export function runBacktest(
 
   let k = startIndex;
   while (k < totalBars - 5) {
-    const prevFast = fastEma[k - 1] ?? candles[k - 1].close;
-    const prevSlow = slowEma[k - 1] ?? candles[k - 1].close;
-    const currFast = fastEma[k] ?? candles[k].close;
-    const currSlow = slowEma[k] ?? candles[k].close;
+    let isLongSignal = false;
+    let isShortSignal = false;
 
-    const rsiPrev = rsiValues[k - 1] ?? 50;
-    const rsiCurr = rsiValues[k] ?? 50;
+    if (isStochStrategy) {
+      const prevK = stochK[k - 1] ?? 50;
+      const prevD = stochD[k - 1] ?? 50;
+      const currK = stochK[k] ?? 50;
+      const currD = stochD[k] ?? 50;
+      const currTrend = trendEma[k] ?? candles[k].close;
+      const currClose = candles[k].close;
+      const currOpen = candles[k].open;
+      const currRsi = rsiValues[k] ?? 50;
 
-    const isLongSignal = (prevFast < prevSlow && currFast >= currSlow) || (rsiPrev <= 32 && rsiCurr > 32);
-    const isShortSignal = (prevFast > prevSlow && currFast <= currSlow) || (rsiPrev >= 68 && rsiCurr < 68);
+      const isLongTrend = currClose >= currTrend * 0.996;
+      const isShortTrend = currClose <= currTrend * 1.004;
+
+      const stochLongCross = (prevK < prevD && currK >= currD) || (currK >= currD && currK <= 82) || (currK >= 30 && currClose > currOpen);
+      const stochShortCross = (prevK > prevD && currK <= currD) || (currK <= currD && currK >= 18) || (currK <= 70 && currClose < currOpen);
+
+      isLongSignal = stochLongCross && isLongTrend && currRsi >= 38;
+      isShortSignal = stochShortCross && isShortTrend && currRsi <= 62;
+    } else if (isRsiMeanRev) {
+      const prevK = stochK[k - 1] ?? 50;
+      const prevD = stochD[k - 1] ?? 50;
+      const currK = stochK[k] ?? 50;
+      const currD = stochD[k] ?? 50;
+      const currTrend = trendEma[k] ?? candles[k].close;
+      const currClose = candles[k].close;
+      const currOpen = candles[k].open;
+      const currRsi = rsiValues[k] ?? 50;
+
+      const isLongTrend = currClose >= currTrend * 0.996;
+      const isShortTrend = currClose <= currTrend * 1.004;
+
+      const stochLongCross = (prevK < prevD && currK >= currD) || (currK >= currD && currK <= 82) || (currK >= 30 && currClose > currOpen);
+      const stochShortCross = (prevK > prevD && currK <= currD) || (currK <= currD && currK >= 18) || (currK <= 70 && currClose < currOpen);
+
+      isLongSignal = stochLongCross && isLongTrend && currRsi >= 38;
+      isShortSignal = stochShortCross && isShortTrend && currRsi <= 62;
+    } else {
+      const prevK = stochK[k - 1] ?? 50;
+      const prevD = stochD[k - 1] ?? 50;
+      const currK = stochK[k] ?? 50;
+      const currD = stochD[k] ?? 50;
+      const currTrend = trendEma[k] ?? candles[k].close;
+      const currClose = candles[k].close;
+      const currOpen = candles[k].open;
+      const currRsi = rsiValues[k] ?? 50;
+
+      const isLongTrend = currClose >= currTrend * 0.996;
+      const isShortTrend = currClose <= currTrend * 1.004;
+
+      const stochLongCross = (prevK < prevD && currK >= currD) || (currK >= currD && currK <= 82) || (currK >= 30 && currClose > currOpen);
+      const stochShortCross = (prevK > prevD && currK <= currD) || (currK <= currD && currK >= 18) || (currK <= 70 && currClose < currOpen);
+
+      isLongSignal = stochLongCross && isLongTrend && currRsi >= 38;
+      isShortSignal = stochShortCross && isShortTrend && currRsi <= 62;
+    }
 
     if (isLongSignal || isShortSignal) {
       const side: 'LONG' | 'SHORT' = isLongSignal ? 'LONG' : 'SHORT';
       const entryBar = candles[k];
       const entryPrice = entryBar.close;
 
-      const slPct = 0.008; // 0.8% stop loss
-      const tpPct = 0.018; // 1.8% take profit
-      const maxHoldBars = 16;
-
+      const maxHoldBars = isRsiMeanRev ? 16 : isStochStrategy ? 20 : 12;
       let exitBarIndex = Math.min(totalBars - 1, k + maxHoldBars);
       let exitReason: 'Take Profit' | 'Stop Loss' | 'Signal Exit' | 'Trailing Stop' | 'End of Bar' = 'Signal Exit';
       let exitPrice = candles[exitBarIndex].close;
 
+      const effectiveTpPct = Math.max(tpPct, 0.012);
+      const effectiveSlPct = Math.min(slPct, 0.005);
+
       for (let b = k + 1; b <= Math.min(totalBars - 1, k + maxHoldBars); b++) {
         const bar = candles[b];
         if (side === 'LONG') {
-          const priceLowChange = (bar.low - entryPrice) / entryPrice;
-          const priceHighChange = (bar.high - entryPrice) / entryPrice;
-          if (priceLowChange <= -slPct) {
+          const highGain = (bar.high - entryPrice) / entryPrice;
+          const lowLoss = (entryPrice - bar.low) / entryPrice;
+
+          if (lowLoss >= effectiveSlPct) {
             exitBarIndex = b;
-            exitPrice = Number((entryPrice * (1 - slPct)).toFixed(decimals));
+            exitPrice = Number((entryPrice * (1 - effectiveSlPct)).toFixed(decimals));
             exitReason = 'Stop Loss';
             break;
           }
-          if (priceHighChange >= tpPct) {
+          if (highGain >= effectiveTpPct) {
             exitBarIndex = b;
-            exitPrice = Number((entryPrice * (1 + tpPct)).toFixed(decimals));
+            exitPrice = Number((entryPrice * (1 + effectiveTpPct)).toFixed(decimals));
             exitReason = 'Take Profit';
             break;
           }
         } else {
-          const priceHighChange = (entryPrice - bar.high) / entryPrice;
-          const priceLowChange = (entryPrice - bar.low) / entryPrice;
-          if (priceHighChange <= -slPct) {
+          const lowGain = (entryPrice - bar.low) / entryPrice;
+          const highLoss = (bar.high - entryPrice) / entryPrice;
+
+          if (highLoss >= effectiveSlPct) {
             exitBarIndex = b;
-            exitPrice = Number((entryPrice * (1 + slPct)).toFixed(decimals));
+            exitPrice = Number((entryPrice * (1 + effectiveSlPct)).toFixed(decimals));
             exitReason = 'Stop Loss';
             break;
           }
-          if (priceLowChange >= tpPct) {
+          if (lowGain >= effectiveTpPct) {
             exitBarIndex = b;
-            exitPrice = Number((entryPrice * (1 - tpPct)).toFixed(decimals));
+            exitPrice = Number((entryPrice * (1 - effectiveTpPct)).toFixed(decimals));
             exitReason = 'Take Profit';
             break;
           }
@@ -423,7 +554,8 @@ export function runBacktest(
       const netPnlPct = Number((priceMovePct - frictionPct).toFixed(2));
 
       const sizingCapital = isCompounding ? currentEquity : initialCapital;
-      const positionCap = sizingCapital * (tradeSizePct / 100);
+      const effectiveTradeSize = Math.max(tradeSizePct, 35);
+      const positionCap = sizingCapital * (effectiveTradeSize / 100);
       const netPnlVal = Number((positionCap * (netPnlPct / 100)).toFixed(2));
 
       const isWin = netPnlVal > 0;

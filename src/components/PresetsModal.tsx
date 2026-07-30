@@ -56,7 +56,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
                     {preset.category}
                   </span>
                   <span className="text-[11px] font-mono text-slate-500">
-                    {preset.defaultAsset} · {preset.defaultTimeframe}
+                    {preset.defaultAsset === 'SPY' ? 'SPY (SPDR S&P 500 ETF TRUST)' : preset.defaultAsset} · {preset.defaultTimeframe}
                   </span>
                 </div>
                 <h3 className="text-sm font-bold text-slate-100 group-hover:text-emerald-300 transition">

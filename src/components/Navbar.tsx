@@ -381,7 +381,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Mobile Sub-Navbar: Always visible quick settings bar for strategy, period & parameters */}
         <div className="lg:hidden border-t border-slate-800/80 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
           {/* Mobile Strategy Dropdown */}
-          <div className="flex-1 min-w-[200px]">
+          <div className="w-full sm:flex-1 min-w-[200px]">
             <select
               id="select-strategy-dropdown-mobile"
               value={selectedStrategyId}
@@ -397,11 +397,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Quick selectors: Asset, Timeframe, Period */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
             <select
               value={selectedAsset}
               onChange={(e) => onAssetChange(e.target.value as AssetSymbol)}
-              className={`bg-slate-950 border text-slate-200 text-xs rounded-lg px-1.5 py-1.5 font-mono font-bold ${
+              className={`max-w-[130px] sm:max-w-none truncate bg-slate-950 border text-slate-200 text-xs rounded-lg px-1.5 py-1.5 font-mono font-bold ${
                 recommendedPairs.includes(selectedAsset) ? 'border-amber-500/60 text-amber-200' : 'border-slate-800'
               }`}
             >
@@ -412,7 +412,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <option value="EUR/USD">{recommendedPairs.includes('EUR/USD') ? '⭐ EUR/USD' : 'EUR/USD'}</option>
               <option value="GBP/USD">{recommendedPairs.includes('GBP/USD') ? '⭐ GBP/USD' : 'GBP/USD'}</option>
               <option value="XAU/USD">{recommendedPairs.includes('XAU/USD') ? '⭐ XAU/USD' : 'XAU/USD'}</option>
-              <option value="SPY">{recommendedPairs.includes('SPY') ? '⭐ SPY (SPDR S&P 500 ETF TRUST)' : 'SPY (SPDR S&P 500 ETF TRUST)'}</option>
+              <option value="SPY">{recommendedPairs.includes('SPY') ? '⭐ SPY' : 'SPY'}</option>
             </select>
 
             <select

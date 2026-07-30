@@ -134,13 +134,13 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
 
       {/* Strategy Selector Dropdown Card */}
       {onSelectStrategyById && (
-        <div className="flex flex-col gap-2 bg-gradient-to-r from-emerald-950/50 to-slate-950 p-3 rounded-xl border border-emerald-700/40 shadow-inner">
-          <div className="flex items-center justify-between">
+        <div className="strategy-model-card flex flex-col gap-2 bg-slate-950 p-3 rounded-xl border border-emerald-600/40 shadow-sm">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <Award className="w-3.5 h-3.5 text-emerald-400" />
               Strategy Model
             </span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-medium">
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-bold border border-emerald-500/30">
               {PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId)?.category || 'Strategy'}
             </span>
           </div>
@@ -158,7 +158,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
             ))}
           </select>
 
-          <p className="text-[11px] text-slate-400 leading-snug">
+          <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
             {PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId)?.description}
           </p>
         </div>
@@ -172,7 +172,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
         </span>
 
         {/* Backtest Period Selector */}
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
           <label htmlFor="input-period-select" className="text-slate-300 font-medium">
             Backtest Period
           </label>
@@ -180,7 +180,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
             id="input-period-select"
             value={selectedPeriod}
             onChange={(e) => onPeriodChange(e.target.value as BacktestPeriod)}
-            className="bg-slate-900 border border-emerald-600/50 text-emerald-300 font-bold font-mono text-xs rounded px-2 py-1"
+            className="w-full sm:w-auto max-w-full bg-slate-900 border border-emerald-600/50 text-emerald-300 font-bold font-mono text-xs rounded px-2 py-1.5"
           >
             <option value="1Y">1 Year (2025-2026)</option>
             <option value="3Y">3 Years (2023-2026)</option>
@@ -191,8 +191,8 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
         </div>
 
         {/* Asset Pair Selection with Recommended Star Indicators */}
-        <div className="flex items-center justify-between text-xs">
-          <label htmlFor="input-asset-select" className="text-slate-300 font-medium flex items-center gap-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+          <label htmlFor="input-asset-select" className="text-slate-300 font-medium flex flex-wrap items-center gap-1.5">
             <span>Asset Pair</span>
             {recommendedPairs.includes(selectedAsset) && (
               <span className="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 border border-amber-500/30">
@@ -204,7 +204,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
             id="input-asset-select"
             value={selectedAsset}
             onChange={(e) => onAssetChange(e.target.value as AssetSymbol)}
-            className={`bg-slate-900 border text-slate-200 font-bold font-mono text-xs rounded px-2 py-1.5 focus:outline-none ${
+            className={`w-full sm:w-auto max-w-full truncate bg-slate-900 border text-slate-200 font-bold font-mono text-xs rounded px-2 py-1.5 focus:outline-none ${
               recommendedPairs.includes(selectedAsset)
                 ? 'border-amber-500/60 text-amber-200 ring-1 ring-amber-500/30'
                 : 'border-slate-700'
@@ -223,7 +223,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
 
         {/* Strategy Recommended Pair Quick-Select Badges */}
         {recommendedPairs.length > 0 && (
-          <div className="flex flex-col gap-1.5 bg-slate-900/90 p-2.5 rounded-lg border border-amber-500/30 shadow-sm mt-1">
+          <div className="recommended-pairs-box flex flex-col gap-1.5 bg-slate-900/90 p-2.5 rounded-lg border border-amber-500/30 shadow-sm mt-1">
             <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
               ⭐ Recommended Pairs for Model
             </span>
@@ -243,7 +243,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
                     }`}
                     title={pairNote || `Select ${pair} to auto-load optimal strategy settings`}
                   >
-                    <span>⭐ {pair}</span>
+                    <span>⭐ {pair === 'SPY' ? 'SPY (SPDR S&P 500 ETF TRUST)' : pair}</span>
                     {isSelected && <span className="text-[9px] bg-slate-950/40 text-amber-100 px-1 rounded">Active</span>}
                   </button>
                 );
@@ -258,7 +258,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
         )}
 
         {/* Timeframe */}
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
           <label htmlFor="input-tf-select" className="text-slate-300 font-medium">
             Timeframe
           </label>
@@ -266,7 +266,7 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
             id="input-tf-select"
             value={selectedTimeframe}
             onChange={(e) => onTimeframeChange(e.target.value as Timeframe)}
-            className="bg-slate-900 border border-slate-700 text-slate-200 font-mono text-xs rounded px-2 py-1"
+            className="w-full sm:w-auto max-w-full bg-slate-900 border border-slate-700 text-slate-200 font-mono text-xs rounded px-2 py-1.5"
           >
             <option value="1m">1m</option>
             <option value="5m">5m</option>

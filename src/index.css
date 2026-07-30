@@ -533,16 +533,15 @@
   stroke: #000000 !important;
 }
 
-/* Chart Navigation Arrow Buttons (Oldest, Back ChevronLeft, Forward ChevronRight, Latest) in Designer & Light Themes */
+/* Chart Navigation Arrow Buttons (Oldest, Back ChevronLeft, Forward ChevronRight, Latest) in Designer Theme - Dark Brown/Gold Font */
 .designer-theme .chart-nav-btn,
 .designer-theme .bg-slate-950 .chart-nav-btn,
 .designer-theme .bg-slate-900 .chart-nav-btn,
-.designer-theme .bg-[#1a1412] .chart-nav-btn,
-.light-theme .chart-nav-btn,
-.light-theme .bg-slate-950 .chart-nav-btn {
+.designer-theme .bg-[#1a1412] .chart-nav-btn {
   background-color: #ffffff !important;
-  border-color: #10b981 !important;
-  color: #047857 !important;
+  border-color: #d97706 !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
 }
 
 .designer-theme .chart-nav-btn *,
@@ -554,7 +553,36 @@
 .designer-theme .bg-slate-950 .chart-nav-btn svg,
 .designer-theme .bg-slate-950 .chart-nav-btn path,
 .designer-theme .bg-slate-900 .chart-nav-btn *,
-.designer-theme .bg-[#1a1412] .chart-nav-btn *,
+.designer-theme .bg-[#1a1412] .chart-nav-btn * {
+  color: #78350f !important;
+  stroke: #78350f !important;
+  stroke-width: 2.8px !important;
+  font-weight: 800 !important;
+}
+
+.designer-theme .chart-nav-btn:hover,
+.designer-theme .bg-slate-950 .chart-nav-btn:hover,
+.designer-theme .bg-slate-900 .chart-nav-btn:hover {
+  background-color: #fef3c7 !important;
+  border-color: #78350f !important;
+}
+
+.designer-theme .chart-nav-btn:hover *,
+.designer-theme .chart-nav-btn:hover span,
+.designer-theme .chart-nav-btn:hover svg,
+.designer-theme .chart-nav-btn:hover path {
+  color: #451a03 !important;
+  stroke: #451a03 !important;
+}
+
+/* Chart Navigation Arrow Buttons in Light Theme - Emerald Theme */
+.light-theme .chart-nav-btn,
+.light-theme .bg-slate-950 .chart-nav-btn {
+  background-color: #ffffff !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+}
+
 .light-theme .chart-nav-btn *,
 .light-theme .chart-nav-btn span,
 .light-theme .chart-nav-btn svg,
@@ -566,15 +594,11 @@
   font-weight: 700 !important;
 }
 
-.designer-theme .chart-nav-btn:hover,
 .light-theme .chart-nav-btn:hover {
   background-color: #ecfdf5 !important;
   border-color: #047857 !important;
 }
 
-.designer-theme .chart-nav-btn:hover *,
-.designer-theme .chart-nav-btn:hover svg,
-.designer-theme .chart-nav-btn:hover path,
 .light-theme .chart-nav-btn:hover *,
 .light-theme .chart-nav-btn:hover svg,
 .light-theme .chart-nav-btn:hover path {
@@ -636,4 +660,216 @@
   color: #78350f !important;
   stroke: #78350f !important;
 }
+
+/* MANDATORY HIGH CONTRAST LEGIBILITY FOR COLORED BACKGROUNDS ACROSS ALL THEMES */
+/* Purple Badges & Buttons */
+.light-theme .bg-purple-950\/80,
+.light-theme .bg-purple-950,
+.light-theme .bg-purple-900 {
+  background-color: #f3e8ff !important;
+  border-color: #c084fc !important;
+  color: #6b21a8 !important;
+}
+.light-theme .bg-purple-950\/80 *,
+.light-theme .bg-purple-950 * {
+  color: #6b21a8 !important;
+}
+
+/* Sky/Blue Badges & Buttons */
+.light-theme .bg-sky-950,
+.light-theme .bg-sky-950\/80,
+.light-theme .bg-sky-900 {
+  background-color: #e0f2fe !important;
+  border-color: #38bdf8 !important;
+  color: #0369a1 !important;
+}
+.light-theme .bg-sky-950 * {
+  color: #0369a1 !important;
+}
+
+/* Emerald Badges & Buttons */
+.light-theme .bg-emerald-950,
+.light-theme .bg-emerald-950\/80,
+.light-theme .bg-emerald-900 {
+  background-color: #d1fae5 !important;
+  border-color: #34d399 !important;
+  color: #065f46 !important;
+}
+.light-theme .bg-emerald-950 * {
+  color: #065f46 !important;
+}
+
+/* Ensure text on all colored buttons and badges stays bold and maximum contrast in Dark Theme */
+.bg-purple-950\/80, .bg-purple-900, .bg-purple-950 {
+  color: #f3e8ff !important;
+}
+.bg-sky-950, .bg-sky-900 {
+  color: #e0f2fe !important;
+}
+.bg-emerald-950\/80, .bg-emerald-900 {
+  color: #a7f3d0 !important;
+}
+.bg-amber-950\/80, .bg-amber-900 {
+  color: #fef3c7 !important;
+}
+
+/* Strategy Model Card High Contrast in Light & Designer Themes */
+.light-theme .strategy-model-card {
+  background-color: #ffffff !important;
+  border-color: #a7f3d0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.designer-theme .strategy-model-card {
+  background-color: #fefdfa !important;
+  border-color: #e5be48 !important;
+  color: #1a1412 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light-theme .strategy-model-card .text-emerald-400 {
+  color: #047857 !important;
+  font-weight: 700 !important;
+}
+
+.designer-theme .strategy-model-card .text-emerald-400 {
+  color: #b45309 !important;
+  font-weight: 700 !important;
+}
+
+.light-theme .strategy-model-card .bg-emerald-500\/20 {
+  background-color: #d1fae5 !important;
+  border-color: #34d399 !important;
+  color: #065f46 !important;
+}
+
+.designer-theme .strategy-model-card .bg-emerald-500\/20 {
+  background-color: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+
+.light-theme .strategy-model-card p,
+.light-theme .strategy-model-card p *,
+.light-theme .strategy-model-card .text-slate-300,
+.light-theme .strategy-model-card .text-slate-400,
+.light-theme .strategy-model-card .text-slate-500 {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+.designer-theme .strategy-model-card p,
+.designer-theme .strategy-model-card p *,
+.designer-theme .strategy-model-card .text-slate-300,
+.designer-theme .strategy-model-card .text-slate-400,
+.designer-theme .strategy-model-card .text-slate-500 {
+  color: #1a1412 !important;
+  font-weight: 600 !important;
+}
+
+/* Recommended Pairs Box High Contrast Overrides */
+.recommended-pairs-box {
+  background-color: #18120c !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+.recommended-pairs-box span {
+  color: #fcd34d !important;
+}
+
+.recommended-pairs-box p {
+  color: #fde68a !important;
+}
+
+.light-theme .recommended-pairs-box {
+  background-color: #fffbeb !important;
+  border-color: #f59e0b !important;
+}
+
+.designer-theme .recommended-pairs-box {
+  background-color: #fef8e8 !important;
+  border-color: #d97706 !important;
+}
+
+.light-theme .recommended-pairs-box span,
+.designer-theme .recommended-pairs-box span {
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+.light-theme .recommended-pairs-box p,
+.designer-theme .recommended-pairs-box p {
+  color: #92400e !important;
+  font-weight: 700 !important;
+}
+
+.light-theme .recommended-pairs-box button:not(.bg-amber-500),
+.designer-theme .recommended-pairs-box button:not(.bg-amber-500) {
+  background-color: #ffffff !important;
+  border-color: #f59e0b !important;
+  color: #78350f !important;
+  font-weight: 700 !important;
+}
+
+.light-theme .recommended-pairs-box button.bg-amber-500,
+.designer-theme .recommended-pairs-box button.bg-amber-500 {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+/* Markers Mode Selector Box High Contrast Overrides */
+.markers-mode-box {
+  background-color: #020617;
+  border-color: #1e293b;
+}
+
+.designer-theme .markers-mode-box,
+.light-theme .markers-mode-box {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.designer-theme .markers-mode-box .marker-label,
+.designer-theme .markers-mode-box span,
+.light-theme .markers-mode-box .marker-label,
+.light-theme .markers-mode-box span {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.designer-theme .markers-mode-box svg,
+.light-theme .markers-mode-box svg {
+  color: #d97706 !important;
+  stroke: #d97706 !important;
+}
+
+.designer-theme .markers-mode-box .unselected-marker-btn,
+.designer-theme .markers-mode-box button:not(.active-marker-btn):not(.bg-emerald-600),
+.light-theme .markers-mode-box .unselected-marker-btn,
+.light-theme .markers-mode-box button:not(.active-marker-btn):not(.bg-emerald-600) {
+  color: #1e293b !important;
+  font-weight: 700 !important;
+  background-color: transparent !important;
+}
+
+.designer-theme .markers-mode-box .unselected-marker-btn:hover,
+.designer-theme .markers-mode-box button:not(.active-marker-btn):not(.bg-emerald-600):hover,
+.light-theme .markers-mode-box .unselected-marker-btn:hover,
+.light-theme .markers-mode-box button:not(.active-marker-btn):not(.bg-emerald-600):hover {
+  background-color: #e2e8f0 !important;
+  color: #000000 !important;
+}
+
+.designer-theme .markers-mode-box .active-marker-btn,
+.designer-theme .markers-mode-box button.bg-emerald-600,
+.light-theme .markers-mode-box .active-marker-btn,
+.light-theme .markers-mode-box button.bg-emerald-600 {
+  background-color: #047857 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
 
