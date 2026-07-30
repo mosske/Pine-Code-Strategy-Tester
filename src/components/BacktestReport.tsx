@@ -121,7 +121,7 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
         
         {/* Total Account Balance Card */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
