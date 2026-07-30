@@ -53,6 +53,56 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
   onRunBacktest,
   isBacktesting,
 }) => {
+  // Helper to format capital with comma separators and cents if present
+  const formatCapitalDisplay = (num: number): string => {
+    if (isNaN(num) || num === null || num === undefined) return '';
+    const str = num.toString();
+    const parts = str.split('.');
+    const intPart = parseInt(parts[0] || '0', 10).toLocaleString('en-US');
+    return parts.length > 1 ? `${intPart}.${parts[1]}` : intPart;
+  };
+
+  const [capitalText, setCapitalText] = React.useState<string>(() => formatCapitalDisplay(initialCapital));
+
+  React.useEffect(() => {
+    const cleanCurrent = capitalText.replace(/,/g, '');
+    const currentNum = parseFloat(cleanCurrent);
+    if (isNaN(currentNum) || currentNum !== initialCapital) {
+      setCapitalText(formatCapitalDisplay(initialCapital));
+    }
+  }, [initialCapital]);
+
+  const handleCapitalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    const clean = rawVal.replace(/[^0-9.]/g, '');
+    const parts = clean.split('.');
+    const integerPart = parts[0] || '';
+    const decimalPart = parts.length > 1 ? parts.slice(1).join('') : null;
+
+    const formattedInt = integerPart ? parseInt(integerPart, 10).toLocaleString('en-US') : '';
+    const newDisplay = decimalPart !== null ? `${formattedInt}.${decimalPart}` : formattedInt;
+
+    setCapitalText(newDisplay);
+
+    const parsed = parseFloat(clean);
+    if (!isNaN(parsed) && parsed >= 0) {
+      onCapitalChange(parsed);
+    } else if (clean === '') {
+      onCapitalChange(0);
+    }
+  };
+
+  const handleCapitalBlur = () => {
+    const clean = capitalText.replace(/,/g, '');
+    const parsed = parseFloat(clean);
+    if (isNaN(parsed) || parsed <= 0) {
+      setCapitalText('1,000');
+      onCapitalChange(1000);
+    } else {
+      setCapitalText(formatCapitalDisplay(parsed));
+    }
+  };
+
   return (
     <div id="strategy-inputs-panel" className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col gap-5">
       
@@ -204,10 +254,13 @@ export const StrategyInputsPanel: React.FC<StrategyInputsPanelProps> = ({
           </label>
           <input
             id="input-capital"
-            type="number"
-            value={initialCapital}
-            onChange={(e) => onCapitalChange(parseFloat(e.target.value) || 1000)}
-            className="w-24 bg-slate-900 border border-slate-700 text-emerald-400 font-bold font-mono text-right text-xs rounded px-2 py-1"
+            type="text"
+            inputMode="decimal"
+            value={capitalText}
+            onChange={handleCapitalChange}
+            onBlur={handleCapitalBlur}
+            placeholder="1,000"
+            className="w-32 bg-slate-900 border border-slate-700 text-emerald-400 font-bold font-mono text-right text-xs rounded px-2 py-1"
           />
         </div>
 
