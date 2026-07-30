@@ -764,7 +764,7 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
                       x={svgWidth - 6}
                       y={yPos - 3}
                       fill="#64748b"
-                      fontSize="9"
+                      fontSize="11"
                       fontFamily="monospace"
                       textAnchor="end"
                     >
@@ -804,23 +804,23 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
                     />
 
                     {/* Top Marker Badge Tag */}
-                    <g transform={`translate(${x}, 14)`}>
+                    <g transform={`translate(${x}, 16)`}>
                       <rect
-                        x={-24}
-                        y={-9}
-                        width={48}
-                        height={16}
-                        rx={3}
+                        x={-32}
+                        y={-11}
+                        width={64}
+                        height={22}
+                        rx={4}
                         fill={badgeBg}
                         stroke={strokeColor}
-                        strokeWidth="0.8"
-                        opacity="0.9"
+                        strokeWidth="1.2"
+                        opacity="0.95"
                       />
                       <text
                         x={0}
-                        y={2.5}
+                        y={4}
                         fill={badgeText}
-                        fontSize="9"
+                        fontSize="12.5"
                         fontWeight="bold"
                         fontFamily="monospace"
                         textAnchor="middle"
@@ -996,7 +996,7 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
                       x={svgWidth - 6}
                       y={yPos - 3}
                       fill="#64748b"
-                      fontSize="9"
+                      fontSize="11"
                       fontFamily="monospace"
                       textAnchor="end"
                     >
@@ -1018,6 +1018,9 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
                 const opacity = isYear ? 0.85 : isMonth ? 0.65 : isWeek ? 0.45 : 0.35;
                 const strokeW = isYear ? 1.5 : isMonth ? 1.2 : isWeek ? 0.8 : 0.6;
 
+                const badgeBg = isYear ? '#78350f' : isMonth ? '#0c4a6e' : isWeek ? '#064e3b' : '#3b0764';
+                const badgeText = isYear ? '#fef08a' : isMonth ? '#bae6fd' : isWeek ? '#a7f3d0' : '#e9d5ff';
+
                 const changeText = marker.periodEquityChange !== undefined 
                   ? (marker.periodEquityChange >= 0 ? `+${marker.periodEquityChange}` : `${marker.periodEquityChange}`)
                   : marker.label;
@@ -1037,23 +1040,23 @@ export const InteractiveEquityProfitCharts: React.FC<InteractiveEquityProfitChar
                     />
 
                     {/* Bottom Marker Badge Tag */}
-                    <g transform={`translate(${x}, ${svgHeight - 12})`}>
+                    <g transform={`translate(${x}, ${svgHeight - 16})`}>
                       <rect
-                        x={-24}
-                        y={-8}
-                        width={48}
-                        height={16}
-                        rx={3}
-                        fill="#0f172a"
+                        x={-32}
+                        y={-11}
+                        width={64}
+                        height={22}
+                        rx={4}
+                        fill={badgeBg}
                         stroke={strokeColor}
-                        strokeWidth="0.8"
-                        opacity="0.9"
+                        strokeWidth="1.2"
+                        opacity="0.95"
                       />
                       <text
                         x={0}
-                        y={3}
-                        fill={strokeColor}
-                        fontSize="9"
+                        y={4}
+                        fill={badgeText}
+                        fontSize="12.5"
                         fontWeight="bold"
                         fontFamily="monospace"
                         textAnchor="middle"
