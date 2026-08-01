@@ -451,9 +451,9 @@ export function runBacktest(
       const isLongTrend = currClose >= currTrend * 0.998;
       const isShortTrend = currClose <= currTrend * 1.002;
 
-      // Stoch %K/%D crossover out of oversold (< 35) or overbought (> 65) with candle direction confirmation
-      const stochLongCross = (prevK <= prevD && currK > currD && prevK <= 35) || (currK <= 30 && currK > prevK);
-      const stochShortCross = (prevK >= prevD && currK < currD && prevK >= 65) || (currK >= 70 && currK < prevK);
+      // Stoch %K/%D crossover or momentum hook with 100 EMA trend confirmation & candle direction
+      const stochLongCross = (prevK <= prevD && currK > currD) || (currK > prevK && prevK <= 50);
+      const stochShortCross = (prevK >= prevD && currK < currD) || (currK < prevK && prevK >= 50);
 
       const candleBull = currClose >= currOpen;
       const candleBear = currClose <= currOpen;
@@ -465,16 +465,20 @@ export function runBacktest(
       const currRsi = rsiValues[k] ?? 50;
       const currTrend = trendEma[k] ?? candles[k].close;
       const currClose = candles[k].close;
+      const currOpen = candles[k].open;
 
       const isLongTrend = currClose >= currTrend * 0.995;
       const isShortTrend = currClose <= currTrend * 1.005;
 
-      // RSI(7) mean-reversion crossover with oversold 40 / overbought 60 for 1.5 - 3 trades/day
-      const rsiLongCond = (prevRsi <= 40 && currRsi > 38) || (prevRsi <= 35 && currRsi > prevRsi);
-      const rsiShortCond = (prevRsi >= 60 && currRsi < 62) || (prevRsi >= 65 && currRsi < prevRsi);
+      // RSI(7) fast mean-reversion hook with candle confirmation
+      const rsiLongCond = (currRsi > prevRsi && prevRsi <= 48);
+      const rsiShortCond = (currRsi < prevRsi && prevRsi >= 52);
 
-      isLongSignal = rsiLongCond && isLongTrend;
-      isShortSignal = rsiShortCond && isShortTrend;
+      const candleBull = currClose >= currOpen;
+      const candleBear = currClose <= currOpen;
+
+      isLongSignal = rsiLongCond && isLongTrend && candleBull;
+      isShortSignal = rsiShortCond && isShortTrend && candleBear;
     } else {
       // Intraday Trend-Pullback Scalper Pro (EMA 9/21 cross & pullback in 100 EMA trend)
       const prevFast = fastEma[k - 1] ?? prices[k - 1];
@@ -493,8 +497,8 @@ export function runBacktest(
       const isLongTrend = currClose >= currEma100 * 0.998;
       const isShortTrend = currClose <= currEma100 * 1.002;
 
-      const emaLongCross = (prevFast <= prevSlow && currFast > currSlow) || (currLow <= currEma21 && currClose >= currEma21 && currClose >= currOpen);
-      const emaShortCross = (prevFast >= prevSlow && currFast < currSlow) || (currHigh >= currEma21 && currClose <= currEma21 && currClose <= currOpen);
+      const emaLongCross = (prevFast <= prevSlow && currFast > currSlow) || (currLow <= currEma21 * 1.001 && currClose >= currEma21 && currClose >= currOpen);
+      const emaShortCross = (prevFast >= prevSlow && currFast < currSlow) || (currHigh >= currEma21 * 0.999 && currClose <= currEma21 && currClose <= currOpen);
 
       const rsiOk = currRsi >= 38 && currRsi <= 62;
 
@@ -507,13 +511,16 @@ export function runBacktest(
       const entryBar = candles[k];
       const entryPrice = entryBar.close;
 
-      const maxHoldBars = isRsiMeanRev ? 10 : isStochStrategy ? 12 : 12;
+      const maxHoldBars = isRsiMeanRev ? 8 : isStochStrategy ? 10 : 10;
       let exitBarIndex = Math.min(totalBars - 1, k + maxHoldBars);
       let exitReason: 'Take Profit' | 'Stop Loss' | 'Signal Exit' | 'Trailing Stop' | 'End of Bar' = 'Signal Exit';
       let exitPrice = candles[exitBarIndex].close;
 
-      const effectiveTpPct = tpPct > 0 ? tpPct : 0.012;
-      const effectiveSlPct = slPct > 0 ? slPct : 0.008;
+      const defaultTp = isRsiMeanRev ? 0.011 : isScalper ? 0.013 : 0.012;
+      const defaultSl = isRsiMeanRev ? 0.0065 : isScalper ? 0.0075 : 0.007;
+
+      const effectiveTpPct = tpPct > 0 ? tpPct : defaultTp;
+      const effectiveSlPct = slPct > 0 ? slPct : defaultSl;
 
       for (let b = k + 1; b <= Math.min(totalBars - 1, k + maxHoldBars); b++) {
         const bar = candles[b];
