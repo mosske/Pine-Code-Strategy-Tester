@@ -467,10 +467,10 @@ export function runBacktest(
       const currClose = candles[k].close;
       const currOpen = candles[k].open;
 
-      const isLongTrend = currClose >= currTrend * 0.995;
-      const isShortTrend = currClose <= currTrend * 1.005;
+      const isLongTrend = currClose >= currTrend * 0.998;
+      const isShortTrend = currClose <= currTrend * 1.002;
 
-      // RSI(7) fast mean-reversion hook with candle confirmation
+      // RSI(7) fast mean-reversion hook with candle & 100 EMA trend confirmation
       const rsiLongCond = (currRsi > prevRsi && prevRsi <= 48);
       const rsiShortCond = (currRsi < prevRsi && prevRsi >= 52);
 
@@ -497,13 +497,17 @@ export function runBacktest(
       const isLongTrend = currClose >= currEma100 * 0.998;
       const isShortTrend = currClose <= currEma100 * 1.002;
 
-      const emaLongCross = (prevFast <= prevSlow && currFast > currSlow) || (currLow <= currEma21 * 1.001 && currClose >= currEma21 && currClose >= currOpen);
-      const emaShortCross = (prevFast >= prevSlow && currFast < currSlow) || (currHigh >= currEma21 * 0.999 && currClose <= currEma21 && currClose <= currOpen);
+      const candleBull = currClose >= currOpen;
+      const candleBear = currClose <= currOpen;
 
-      const rsiOk = currRsi >= 38 && currRsi <= 62;
+      const emaLongSignal = ((currFast >= currSlow) || (prevFast <= prevSlow && currFast > currSlow) || (currLow <= currEma21 * 1.002)) && currFast >= prevFast;
+      const emaShortSignal = ((currFast <= currSlow) || (prevFast >= prevSlow && currFast < currSlow) || (currHigh >= currEma21 * 0.998)) && currFast <= prevFast;
 
-      isLongSignal = emaLongCross && isLongTrend && rsiOk;
-      isShortSignal = emaShortCross && isShortTrend && rsiOk;
+      const rsiOkLong = currRsi >= 38 && currRsi <= 72;
+      const rsiOkShort = currRsi <= 62 && currRsi >= 28;
+
+      isLongSignal = emaLongSignal && isLongTrend && candleBull && rsiOkLong;
+      isShortSignal = emaShortSignal && isShortTrend && candleBear && rsiOkShort;
     }
 
     if (isLongSignal || isShortSignal) {
