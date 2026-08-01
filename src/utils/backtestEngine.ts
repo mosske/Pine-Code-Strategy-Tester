@@ -447,11 +447,11 @@ export function runBacktest(
       const currTrend = trendEma[k] ?? candles[k].close;
       const currClose = candles[k].close;
 
-      const isLongTrend = currClose >= currTrend * 0.998;
-      const isShortTrend = currClose <= currTrend * 1.002;
+      const isLongTrend = currClose >= currTrend;
+      const isShortTrend = currClose <= currTrend;
 
-      const stochLongCross = prevK <= prevD && currK > currD && currK <= 50;
-      const stochShortCross = prevK >= prevD && currK < currD && currK >= 50;
+      const stochLongCross = prevK <= prevD && currK > currD && currK <= 45;
+      const stochShortCross = prevK >= prevD && currK < currD && currK >= 55;
 
       isLongSignal = stochLongCross && isLongTrend;
       isShortSignal = stochShortCross && isShortTrend;
@@ -460,34 +460,32 @@ export function runBacktest(
       const currRsi = rsiValues[k] ?? 50;
       const currTrend = trendEma[k] ?? candles[k].close;
       const currClose = candles[k].close;
-      const currOpen = candles[k].open;
 
-      const isLongTrend = currClose >= currTrend * 0.998;
-      const isShortTrend = currClose <= currTrend * 1.002;
+      const isLongTrend = currClose >= currTrend;
+      const isShortTrend = currClose <= currTrend;
 
-      const rsiLongCond = prevRsi <= oversold && currRsi > oversold;
-      const rsiShortCond = prevRsi >= overbought && currRsi < overbought;
+      const rsiLongCond = (prevRsi <= oversold || prevRsi <= 35) && currRsi > oversold;
+      const rsiShortCond = (prevRsi >= overbought || prevRsi >= 65) && currRsi < overbought;
 
       isLongSignal = rsiLongCond && isLongTrend;
       isShortSignal = rsiShortCond && isShortTrend;
     } else {
-      // Intraday Momentum Scalper (EMA 9/21 cross with 100 EMA trend & RSI)
-      const prevFast = fastEma[k - 1] ?? prices[k - 1];
-      const prevSlow = slowEma[k - 1] ?? prices[k - 1];
-      const currFast = fastEma[k] ?? prices[k];
-      const currSlow = slowEma[k] ?? prices[k];
-      const currTrend = trendEma[k] ?? candles[k].close;
+      // Intraday Trend-Pullback Scalper Pro (21 EMA pullback in 100 EMA trend)
       const currClose = candles[k].close;
+      const currLow = candles[k].low;
+      const currHigh = candles[k].high;
+      const currEma21 = fastEma[k] ?? currClose;
+      const currEma100 = trendEma[k] ?? currClose;
       const currRsi = rsiValues[k] ?? 50;
 
-      const isLongTrend = currClose >= currTrend * 0.998;
-      const isShortTrend = currClose <= currTrend * 1.002;
+      const isLongTrend = currClose >= currEma100;
+      const isShortTrend = currClose <= currEma100;
 
-      const emaLongCross = prevFast <= prevSlow && currFast > currSlow && currRsi >= 45;
-      const emaShortCross = prevFast >= prevSlow && currFast < currSlow && currRsi <= 55;
+      const bullishPullback = currLow <= currEma21 && currClose > currEma21 && currRsi >= 40 && currRsi <= 65;
+      const bearishPullback = currHigh >= currEma21 && currClose < currEma21 && currRsi <= 60 && currRsi >= 35;
 
-      isLongSignal = emaLongCross && isLongTrend;
-      isShortSignal = emaShortCross && isShortTrend;
+      isLongSignal = isLongTrend && bullishPullback;
+      isShortSignal = isShortTrend && bearishPullback;
     }
 
     if (isLongSignal || isShortSignal) {
@@ -500,8 +498,8 @@ export function runBacktest(
       let exitReason: 'Take Profit' | 'Stop Loss' | 'Signal Exit' | 'Trailing Stop' | 'End of Bar' = 'Signal Exit';
       let exitPrice = candles[exitBarIndex].close;
 
-      const effectiveTpPct = tpPct > 0 ? tpPct : 0.022;
-      const effectiveSlPct = slPct > 0 ? slPct : 0.008;
+      const effectiveTpPct = tpPct > 0 ? tpPct : 0.015;
+      const effectiveSlPct = slPct > 0 ? slPct : 0.010;
 
       for (let b = k + 1; b <= Math.min(totalBars - 1, k + maxHoldBars); b++) {
         const bar = candles[b];
