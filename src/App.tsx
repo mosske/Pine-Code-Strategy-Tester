@@ -176,7 +176,7 @@ export default function App() {
 
   // Initial Backtest Result
   const [backtestResult, setBacktestResult] = useState<BacktestResult>(() => {
-    return runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct);
+    return runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, selectedAsset, selectedTimeframe, selectedPeriod);
   });
 
   // Fetch MCP Credits on mount
@@ -208,11 +208,11 @@ export default function App() {
       );
 
       // Add local indicators calculation for price chart overlay
-      const localIndicators = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct).indicators;
+      const localIndicators = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, selectedAsset, selectedTimeframe, selectedPeriod).indicators;
       mcpResult.indicators = localIndicators;
 
       if (mcpResult.totalTrades === 0 || !mcpResult.trades || mcpResult.trades.length === 0) {
-        const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct);
+        const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, selectedAsset, selectedTimeframe, selectedPeriod);
         setBacktestResult(localRes);
       } else {
         setBacktestResult(mcpResult);
@@ -231,7 +231,7 @@ export default function App() {
       setMcpError(err.message || 'TradingKit MCP backtest unavailable; using local simulation.');
 
       // 2. Fallback to local backtest engine if MCP is unavailable
-      const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct);
+      const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, selectedAsset, selectedTimeframe, selectedPeriod);
       setBacktestResult(localRes);
 
       if (showToast) {
