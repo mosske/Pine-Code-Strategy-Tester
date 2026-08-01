@@ -450,8 +450,8 @@ export function runBacktest(
       const isLongTrend = currClose >= currTrend * 0.998;
       const isShortTrend = currClose <= currTrend * 1.002;
 
-      const stochLongCross = (prevK <= prevD && currK > currD && currK <= 50) || (currK >= currD && currK <= 45);
-      const stochShortCross = (prevK >= prevD && currK < currD && currK >= 50) || (currK <= currD && currK >= 55);
+      const stochLongCross = prevK <= prevD && currK > currD && currK <= 50;
+      const stochShortCross = prevK >= prevD && currK < currD && currK >= 50;
 
       isLongSignal = stochLongCross && isLongTrend;
       isShortSignal = stochShortCross && isShortTrend;
@@ -465,8 +465,8 @@ export function runBacktest(
       const isLongTrend = currClose >= currTrend * 0.998;
       const isShortTrend = currClose <= currTrend * 1.002;
 
-      const rsiLongCond = (prevRsi <= oversold && currRsi > oversold) || (currRsi <= oversold && currClose > currOpen);
-      const rsiShortCond = (prevRsi >= overbought && currRsi < overbought) || (currRsi >= overbought && currClose < currOpen);
+      const rsiLongCond = prevRsi <= oversold && currRsi > oversold;
+      const rsiShortCond = prevRsi >= overbought && currRsi < overbought;
 
       isLongSignal = rsiLongCond && isLongTrend;
       isShortSignal = rsiShortCond && isShortTrend;
@@ -480,11 +480,11 @@ export function runBacktest(
       const currClose = candles[k].close;
       const currRsi = rsiValues[k] ?? 50;
 
-      const isLongTrend = currClose >= currTrend && currFast > currSlow;
-      const isShortTrend = currClose <= currTrend && currFast < currSlow;
+      const isLongTrend = currClose >= currTrend * 0.998;
+      const isShortTrend = currClose <= currTrend * 1.002;
 
-      const emaLongCross = (prevFast <= prevSlow && currFast > currSlow) || (currFast > currSlow && currRsi >= 45 && currRsi <= 68);
-      const emaShortCross = (prevFast >= prevSlow && currFast < currSlow) || (currFast < currSlow && currRsi <= 55 && currRsi >= 32);
+      const emaLongCross = prevFast <= prevSlow && currFast > currSlow && currRsi >= 45;
+      const emaShortCross = prevFast >= prevSlow && currFast < currSlow && currRsi <= 55;
 
       isLongSignal = emaLongCross && isLongTrend;
       isShortSignal = emaShortCross && isShortTrend;
@@ -495,13 +495,13 @@ export function runBacktest(
       const entryBar = candles[k];
       const entryPrice = entryBar.close;
 
-      const maxHoldBars = isRsiMeanRev ? 16 : isStochStrategy ? 20 : 12;
+      const maxHoldBars = isRsiMeanRev ? 16 : isStochStrategy ? 20 : 24;
       let exitBarIndex = Math.min(totalBars - 1, k + maxHoldBars);
       let exitReason: 'Take Profit' | 'Stop Loss' | 'Signal Exit' | 'Trailing Stop' | 'End of Bar' = 'Signal Exit';
       let exitPrice = candles[exitBarIndex].close;
 
-      const effectiveTpPct = Math.max(tpPct, 0.012);
-      const effectiveSlPct = Math.min(slPct, 0.005);
+      const effectiveTpPct = tpPct > 0 ? tpPct : 0.022;
+      const effectiveSlPct = slPct > 0 ? slPct : 0.008;
 
       for (let b = k + 1; b <= Math.min(totalBars - 1, k + maxHoldBars); b++) {
         const bar = candles[b];
