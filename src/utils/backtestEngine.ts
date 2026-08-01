@@ -446,53 +446,48 @@ export function runBacktest(
       const currD = stochD[k] ?? 50;
       const currTrend = trendEma[k] ?? candles[k].close;
       const currClose = candles[k].close;
-      const currOpen = candles[k].open;
-      const currRsi = rsiValues[k] ?? 50;
 
-      const isLongTrend = currClose >= currTrend * 0.996;
-      const isShortTrend = currClose <= currTrend * 1.004;
+      const isLongTrend = currClose >= currTrend * 0.998;
+      const isShortTrend = currClose <= currTrend * 1.002;
 
-      const stochLongCross = (prevK < prevD && currK >= currD) || (currK >= currD && currK <= 82) || (currK >= 30 && currClose > currOpen);
-      const stochShortCross = (prevK > prevD && currK <= currD) || (currK <= currD && currK >= 18) || (currK <= 70 && currClose < currOpen);
+      const stochLongCross = (prevK <= prevD && currK > currD && currK <= 50) || (currK >= currD && currK <= 45);
+      const stochShortCross = (prevK >= prevD && currK < currD && currK >= 50) || (currK <= currD && currK >= 55);
 
-      isLongSignal = stochLongCross && isLongTrend && currRsi >= 38;
-      isShortSignal = stochShortCross && isShortTrend && currRsi <= 62;
+      isLongSignal = stochLongCross && isLongTrend;
+      isShortSignal = stochShortCross && isShortTrend;
     } else if (isRsiMeanRev) {
-      const prevK = stochK[k - 1] ?? 50;
-      const prevD = stochD[k - 1] ?? 50;
-      const currK = stochK[k] ?? 50;
-      const currD = stochD[k] ?? 50;
+      const prevRsi = rsiValues[k - 1] ?? 50;
+      const currRsi = rsiValues[k] ?? 50;
       const currTrend = trendEma[k] ?? candles[k].close;
       const currClose = candles[k].close;
       const currOpen = candles[k].open;
-      const currRsi = rsiValues[k] ?? 50;
 
-      const isLongTrend = currClose >= currTrend * 0.996;
-      const isShortTrend = currClose <= currTrend * 1.004;
+      const isLongTrend = currClose >= currTrend * 0.998;
+      const isShortTrend = currClose <= currTrend * 1.002;
 
-      const stochLongCross = (prevK < prevD && currK >= currD) || (currK >= currD && currK <= 82) || (currK >= 30 && currClose > currOpen);
-      const stochShortCross = (prevK > prevD && currK <= currD) || (currK <= currD && currK >= 18) || (currK <= 70 && currClose < currOpen);
+      const rsiLongCond = (prevRsi <= oversold && currRsi > oversold) || (currRsi <= oversold && currClose > currOpen);
+      const rsiShortCond = (prevRsi >= overbought && currRsi < overbought) || (currRsi >= overbought && currClose < currOpen);
 
-      isLongSignal = stochLongCross && isLongTrend && currRsi >= 38;
-      isShortSignal = stochShortCross && isShortTrend && currRsi <= 62;
+      isLongSignal = rsiLongCond && isLongTrend;
+      isShortSignal = rsiShortCond && isShortTrend;
     } else {
-      const prevK = stochK[k - 1] ?? 50;
-      const prevD = stochD[k - 1] ?? 50;
-      const currK = stochK[k] ?? 50;
-      const currD = stochD[k] ?? 50;
+      // Intraday Momentum Scalper (EMA 9/21 cross with 100 EMA trend & RSI)
+      const prevFast = fastEma[k - 1] ?? prices[k - 1];
+      const prevSlow = slowEma[k - 1] ?? prices[k - 1];
+      const currFast = fastEma[k] ?? prices[k];
+      const currSlow = slowEma[k] ?? prices[k];
       const currTrend = trendEma[k] ?? candles[k].close;
       const currClose = candles[k].close;
-      const currOpen = candles[k].open;
       const currRsi = rsiValues[k] ?? 50;
 
-      const isLongTrend = currClose >= currTrend * 0.996;
-      const isShortTrend = currClose <= currTrend * 1.004;
+      const isLongTrend = currClose >= currTrend && currFast > currSlow;
+      const isShortTrend = currClose <= currTrend && currFast < currSlow;
 
-      const stochLongCross = (prevK < prevD && currK >= currD) || (currK >= currD && currK <= 82) || (currK >= 30 && currClose > currOpen);
-      const stochShortCross = (prevK > prevD && currK <= currD) || (currK <= currD && currK >= 18) || (currK <= 70 && currClose < currOpen);
+      const emaLongCross = (prevFast <= prevSlow && currFast > currSlow) || (currFast > currSlow && currRsi >= 45 && currRsi <= 68);
+      const emaShortCross = (prevFast >= prevSlow && currFast < currSlow) || (currFast < currSlow && currRsi <= 55 && currRsi >= 32);
 
-      isLongSignal = stochLongCross && isLongTrend && currRsi >= 38;
-      isShortSignal = stochShortCross && isShortTrend && currRsi <= 62;
+      isLongSignal = emaLongCross && isLongTrend;
+      isShortSignal = emaShortCross && isShortTrend;
     }
 
     if (isLongSignal || isShortSignal) {
