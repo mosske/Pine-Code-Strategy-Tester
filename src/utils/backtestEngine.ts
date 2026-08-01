@@ -462,17 +462,21 @@ export function runBacktest(
       isShortSignal = stochShortCross && isShortTrend && candleBear;
     } else if (isRsiMeanRev) {
       const prevRsi = rsiValues[k - 1] ?? 50;
+      const prev2Rsi = rsiValues[k - 2] ?? 50;
       const currRsi = rsiValues[k] ?? 50;
       const currTrend = trendEma[k] ?? candles[k].close;
       const currClose = candles[k].close;
       const currOpen = candles[k].open;
 
-      const isLongTrend = currClose >= currTrend * 0.998;
-      const isShortTrend = currClose <= currTrend * 1.002;
+      const isLongTrend = currClose >= currTrend * 0.996;
+      const isShortTrend = currClose <= currTrend * 1.004;
 
-      // RSI(7) fast mean-reversion hook with candle & 100 EMA trend confirmation
-      const rsiLongCond = (currRsi > prevRsi && prevRsi <= 48);
-      const rsiShortCond = (currRsi < prevRsi && prevRsi >= 52);
+      const rsiOversoldThreshold = Number(inputValues.oversold || 45);
+      const rsiOverboughtThreshold = Number(inputValues.overbought || 55);
+
+      // RSI mean-reversion hook: RSI was oversold/dipped and turns up with candle confirmation in macro trend
+      const rsiLongCond = (currRsi > prevRsi && (prevRsi <= rsiOversoldThreshold || prev2Rsi <= rsiOversoldThreshold || prevRsi <= 45)) || (prevRsi <= 40 && currRsi > 38);
+      const rsiShortCond = (currRsi < prevRsi && (prevRsi >= rsiOverboughtThreshold || prev2Rsi >= rsiOverboughtThreshold || prevRsi >= 55)) || (prevRsi >= 60 && currRsi < 62);
 
       const candleBull = currClose >= currOpen;
       const candleBear = currClose <= currOpen;
@@ -500,14 +504,14 @@ export function runBacktest(
       const candleBull = currClose >= currOpen;
       const candleBear = currClose <= currOpen;
 
-      const emaLongSignal = ((currFast >= currSlow) || (prevFast <= prevSlow && currFast > currSlow) || (currLow <= currEma21 * 1.002)) && currFast >= prevFast;
-      const emaShortSignal = ((currFast <= currSlow) || (prevFast >= prevSlow && currFast < currSlow) || (currHigh >= currEma21 * 0.998)) && currFast <= prevFast;
+      const emaLongCross = (prevFast <= prevSlow && currFast > currSlow) || (currLow <= currEma21 * 1.0015 && currClose >= currSlow) || (currFast > currSlow && currFast > prevFast && prices[k - 1] <= currFast);
+      const emaShortCross = (prevFast >= prevSlow && currFast < currSlow) || (currHigh >= currEma21 * 0.9985 && currClose <= currSlow) || (currFast < currSlow && currFast < prevFast && prices[k - 1] >= currFast);
 
       const rsiOkLong = currRsi >= 38 && currRsi <= 72;
       const rsiOkShort = currRsi <= 62 && currRsi >= 28;
 
-      isLongSignal = emaLongSignal && isLongTrend && candleBull && rsiOkLong;
-      isShortSignal = emaShortSignal && isShortTrend && candleBear && rsiOkShort;
+      isLongSignal = emaLongCross && isLongTrend && candleBull && rsiOkLong;
+      isShortSignal = emaShortCross && isShortTrend && candleBear && rsiOkShort;
     }
 
     if (isLongSignal || isShortSignal) {
