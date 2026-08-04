@@ -46,18 +46,33 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // Helper to construct inputs for a strategy and asset pair
+  const getStrategyDefaultInputs = useCallback((strategy: PinePresetStrategy, asset?: AssetSymbol): StrategyInput[] => {
+    const targetAsset = asset || strategy.defaultAsset;
+    const pairConfig = strategy.pairConfigs?.[targetAsset];
+    return strategy.inputs.map((baseInp) => {
+      const overrideVal = pairConfig?.inputs?.[baseInp.id];
+      return {
+        ...baseInp,
+        value: overrideVal !== undefined ? overrideVal : baseInp.value,
+      };
+    });
+  }, []);
+
   // Strategy Selection & Settings State (Persisted in LocalStorage)
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
     return localStorage.getItem('pinestudio_strategy_id') || PRESET_STRATEGIES[0].id;
   });
+
+  const initialStrategy = useMemo(() => {
+    return PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId) || PRESET_STRATEGIES[0];
+  }, [selectedStrategyId]);
+
   const [strategyTitle, setStrategyTitle] = useState<string>(() => {
     return localStorage.getItem('pinestudio_strategy_title') || PRESET_STRATEGIES[0].title;
   });
   const [pineCode, setPineCode] = useState<string>(() => {
     return localStorage.getItem('pinestudio_pine_code') || PRESET_STRATEGIES[0].pineCode;
-  });
-  const [inputs, setInputs] = useState<StrategyInput[]>(() => {
-    return getStoredValue('pinestudio_inputs', PRESET_STRATEGIES[0].inputs);
   });
   const [selectedAsset, setSelectedAsset] = useState<AssetSymbol>(() => {
     return (localStorage.getItem('pinestudio_selected_asset') as AssetSymbol) || PRESET_STRATEGIES[0].defaultAsset;
@@ -67,6 +82,31 @@ export default function App() {
   });
   const [selectedPeriod, setSelectedPeriod] = useState<BacktestPeriod>(() => {
     return (localStorage.getItem('pinestudio_selected_period') as BacktestPeriod) || PRESET_STRATEGIES[0].defaultPeriod || '1Y';
+  });
+
+  const [inputs, setInputs] = useState<StrategyInput[]>(() => {
+    const initStratId = localStorage.getItem('pinestudio_strategy_id') || PRESET_STRATEGIES[0].id;
+    const initStrat = PRESET_STRATEGIES.find((s) => s.id === initStratId) || PRESET_STRATEGIES[0];
+    const expectedIds = initStrat.inputs.map((i) => i.id);
+
+    const savedForStrat = getStoredValue<StrategyInput[] | null>(`pinestudio_inputs_${initStrat.id}`, null);
+    if (savedForStrat && Array.isArray(savedForStrat) && savedForStrat.length === expectedIds.length) {
+      const isMatch = savedForStrat.every((sInp) => expectedIds.includes(sInp.id));
+      if (isMatch) return savedForStrat;
+    }
+
+    const legacy = getStoredValue<StrategyInput[] | null>('pinestudio_inputs', null);
+    if (legacy && Array.isArray(legacy) && legacy.length === expectedIds.length) {
+      const isMatch = legacy.every((lInp) => expectedIds.includes(lInp.id));
+      if (isMatch) return legacy;
+    }
+
+    const initAsset = (localStorage.getItem('pinestudio_selected_asset') as AssetSymbol) || initStrat.defaultAsset;
+    const pairConfig = initStrat.pairConfigs?.[initAsset];
+    return initStrat.inputs.map((baseInp) => ({
+      ...baseInp,
+      value: pairConfig?.inputs?.[baseInp.id] !== undefined ? pairConfig.inputs[baseInp.id] : baseInp.value,
+    }));
   });
 
   // Trading Costs & Account Capital Settings
@@ -121,7 +161,10 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('pinestudio_inputs', JSON.stringify(inputs));
-  }, [inputs]);
+    if (selectedStrategyId) {
+      localStorage.setItem(`pinestudio_inputs_${selectedStrategyId}`, JSON.stringify(inputs));
+    }
+  }, [inputs, selectedStrategyId]);
 
   useEffect(() => {
     localStorage.setItem('pinestudio_selected_asset', selectedAsset);
@@ -254,58 +297,32 @@ export default function App() {
     );
   };
 
-  // Helper to apply pair-specific parameter overrides if available
-  const applyPairSpecificConfig = (
-    strategy: PinePresetStrategy,
-    asset: AssetSymbol,
-    baseInputs: StrategyInput[]
-  ) => {
-    const pairConfig = strategy.pairConfigs?.[asset];
-    if (pairConfig) {
-      if (pairConfig.timeframe) {
-        setSelectedTimeframe(pairConfig.timeframe);
-      }
-      if (pairConfig.period) {
-        setSelectedPeriod(pairConfig.period);
-      }
-      if (pairConfig.inputs) {
-        const updatedInputs = baseInputs.map((baseInp) => {
-          const overrideVal = pairConfig.inputs?.[baseInp.id];
-          return {
-            ...baseInp,
-            value: overrideVal !== undefined ? overrideVal : baseInp.value,
-          };
-        });
-        setInputs(updatedInputs);
-      } else {
-        setInputs(baseInputs.map((inp) => ({ ...inp })));
-      }
-    } else {
-      setInputs(baseInputs.map((inp) => ({ ...inp })));
-    }
-  };
-
   // Select Preset/Strategy Handler (Auto-populates and resets variables to recommended defaults)
-  const handleSelectPreset = (preset: PinePresetStrategy) => {
+  const handleSelectPreset = (preset: PinePresetStrategy, assetOverride?: AssetSymbol) => {
     setSelectedStrategyId(preset.id);
     setStrategyTitle(preset.title);
     setPineCode(preset.pineCode);
-    const targetAsset = preset.defaultAsset;
+
+    const targetAsset = assetOverride || preset.defaultAsset;
     setSelectedAsset(targetAsset);
 
-    // Set fallback timeframe and period
     setSelectedTimeframe(preset.defaultTimeframe);
     setSelectedPeriod(preset.defaultPeriod || '1Y');
 
-    // Apply pair-specific parameters if configured
-    applyPairSpecificConfig(preset, targetAsset, preset.inputs);
+    const defaultInputs = getStrategyDefaultInputs(preset, targetAsset);
+    setInputs(defaultInputs);
+
+    // Save active strategy and default inputs
+    localStorage.setItem('pinestudio_strategy_id', preset.id);
+    localStorage.setItem('pinestudio_strategy_title', preset.title);
+    localStorage.setItem('pinestudio_pine_code', preset.pineCode);
+    localStorage.setItem(`pinestudio_inputs_${preset.id}`, JSON.stringify(defaultInputs));
   };
 
   // Asset Pair Change Handler (Auto-applies strategy settings tuned for that pair)
   const handleAssetChange = (newAsset: AssetSymbol) => {
     setSelectedAsset(newAsset);
-    const currentStrat = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId);
-    if (!currentStrat) return;
+    const currentStrat = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId) || PRESET_STRATEGIES[0];
 
     const pairConfig = currentStrat.pairConfigs?.[newAsset];
     if (pairConfig) {
@@ -325,6 +342,8 @@ export default function App() {
             };
           })
         );
+      } else {
+        setInputs(currentStrat.inputs.map((inp) => ({ ...inp })));
       }
       const noteStr = pairConfig.notes ? ` (${pairConfig.notes})` : '';
       addToast(
@@ -348,8 +367,13 @@ export default function App() {
   // Reset current strategy back to its recommended defaults
   const handleResetToRecommended = () => {
     const found = PRESET_STRATEGIES.find((s) => s.id === selectedStrategyId) || PRESET_STRATEGIES[0];
-    handleSelectPreset(found);
-    addToast('Reset to Defaults', `Variables restored to recommended defaults`, 'reset');
+
+    // Remove saved custom inputs for this strategy so it reverts to fresh defaults
+    localStorage.removeItem(`pinestudio_inputs_${found.id}`);
+    localStorage.removeItem('pinestudio_inputs');
+
+    handleSelectPreset(found, found.defaultAsset);
+    addToast('Reset to Defaults', `Variables restored to recommended strategy defaults`, 'reset');
   };
 
   // AI Generated Strategy Apply Handler
