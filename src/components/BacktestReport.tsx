@@ -27,12 +27,14 @@ interface BacktestReportProps {
   result: BacktestResult;
   selectedTradeId?: string | null;
   onSelectTrade?: (tradeId: string) => void;
+  hideParityNotes?: boolean;
 }
 
 export const BacktestReport: React.FC<BacktestReportProps> = ({
   result,
   selectedTradeId,
   onSelectTrade,
+  hideParityNotes = false,
 }) => {
   const [tradeFilter, setTradeFilter] = useState<'ALL' | 'WINNERS' | 'LOSERS'>('ALL');
   const [showParityNotes, setShowParityNotes] = useState<boolean>(true);
@@ -375,53 +377,55 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
       </div>
 
       {/* TradingView Parity & Discrepancy Insight Card */}
-      <div id="tradingview-parity-insights-card" className="bg-slate-900/90 border border-amber-500/30 rounded-xl overflow-hidden shadow-lg">
-        <button
-          onClick={() => setShowParityNotes(!showParityNotes)}
-          className="w-full px-5 py-3.5 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 flex items-center justify-between hover:bg-slate-850 transition"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div className="text-left">
-              <h3 className="text-xs font-bold text-amber-200">
-                TradingView Strategy Execution Parity & Discrepancy Resolution Guide
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Insights on why simple backtest engines diverge from TradingView & how our updated strategies ensure TV parity
-              </p>
-            </div>
-          </div>
-          <div className="text-slate-400 hover:text-slate-200 transition">
-            {showParityNotes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </button>
-
-        {showParityNotes && (
-          <div className="p-5 border-t border-slate-800/80 bg-slate-950/60 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {TRADINGVIEW_PARITY_INSIGHTS.map((item, idx) => (
-              <div key={idx} className="bg-slate-900/80 border border-slate-800 rounded-lg p-3.5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-bold text-amber-300">
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>{item.title}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
-                    <strong className="text-rose-300 font-semibold">Issue: </strong>{item.cause}
-                  </p>
-                  <p className="text-[11px] text-emerald-300 leading-relaxed">
-                    <strong className="text-emerald-400 font-semibold">Solution: </strong>{item.solution}
-                  </p>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-850 text-[10px] font-mono text-slate-400">
-                  {item.details}
-                </div>
+      {!hideParityNotes && (
+        <div id="tradingview-parity-insights-card" className="bg-slate-900/90 border border-amber-500/30 rounded-xl overflow-hidden shadow-lg">
+          <button
+            onClick={() => setShowParityNotes(!showParityNotes)}
+            className="w-full px-5 py-3.5 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 flex items-center justify-between hover:bg-slate-850 transition"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                <ShieldCheck className="w-4 h-4" />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <div className="text-left">
+                <h3 className="text-xs font-bold text-amber-200">
+                  TradingView Strategy Execution Parity & Discrepancy Resolution Guide
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Insights on why simple backtest engines diverge from TradingView & how our updated strategies ensure TV parity
+                </p>
+              </div>
+            </div>
+            <div className="text-slate-400 hover:text-slate-200 transition">
+              {showParityNotes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+          </button>
+
+          {showParityNotes && (
+            <div className="p-5 border-t border-slate-800/80 bg-slate-950/60 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {TRADINGVIEW_PARITY_INSIGHTS.map((item, idx) => (
+                <div key={idx} className="bg-slate-900/80 border border-slate-800 rounded-lg p-3.5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-bold text-amber-300">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>{item.title}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
+                      <strong className="text-rose-300 font-semibold">Issue: </strong>{item.cause}
+                    </p>
+                    <p className="text-[11px] text-emerald-300 leading-relaxed">
+                      <strong className="text-emerald-400 font-semibold">Solution: </strong>{item.solution}
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-slate-850 text-[10px] font-mono text-slate-400">
+                    {item.details}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

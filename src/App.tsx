@@ -478,6 +478,7 @@ export default function App() {
                 result={backtestResult}
                 selectedTradeId={selectedTradeId}
                 onSelectTrade={setSelectedTradeId}
+                hideParityNotes={true}
               />
             )}
 
