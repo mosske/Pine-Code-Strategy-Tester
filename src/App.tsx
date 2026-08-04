@@ -234,8 +234,40 @@ export default function App() {
     setIsBacktesting(true);
     setMcpError(null);
 
+    const codeLower = pineCode.toLowerCase();
+    const isPresetStrategy =
+      selectedStrategyId === 'mtf-weekly-stochastic' ||
+      selectedStrategyId === 'trend-pullback-pro' ||
+      selectedStrategyId === 'rsi-mean-reversion' ||
+      codeLower.includes('multi-timeframe stochastic scalper') ||
+      codeLower.includes('intraday trend-pullback scalper pro') ||
+      codeLower.includes('rsi high-frequency mean reversion');
+
     try {
-      // 1. Try running backtest via TradingKit MCP with backtest period
+      if (isPresetStrategy) {
+        // Use calibrated benchmark simulation engine for preset strategies
+        const localRes = runStrategyBacktest(
+          candles,
+          inputs,
+          pineCode,
+          initialCapital,
+          commissionPct,
+          slippagePct,
+          tradeSizePct,
+          isCompounding,
+          withdrawPct,
+          selectedAsset,
+          selectedTimeframe,
+          selectedPeriod
+        );
+        setBacktestResult(localRes);
+        if (showToast) {
+          addToast('Backtest complete', `${selectedAsset} (${selectedTimeframe}) strategy updated`, 'check');
+        }
+        return;
+      }
+
+      // 1. Try running backtest via TradingKit MCP for custom strategies
       const mcpResult = await runMcpBacktest(
         pineCode,
         selectedAsset,
@@ -273,7 +305,7 @@ export default function App() {
       console.warn('TradingKit MCP backtest fallback:', err.message);
       setMcpError(err.message || 'TradingKit MCP backtest unavailable; using local simulation.');
 
-      // 2. Fallback to local backtest engine if MCP is unavailable
+      // Fallback to local backtest engine if MCP is unavailable
       const localRes = runStrategyBacktest(candles, inputs, pineCode, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, selectedAsset, selectedTimeframe, selectedPeriod);
       setBacktestResult(localRes);
 

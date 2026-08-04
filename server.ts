@@ -286,13 +286,6 @@ app.post("/api/mcp/backtest", async (req, res) => {
         tradePnl = tradePnl * compoundFactor;
       }
 
-      // 3. Deduct extra friction (commission & slippage) if non-zero
-      if (frictionPct > 0) {
-        const positionCap = (isCompoundingBool ? runningEquity : startCap) * sizeScale;
-        const frictionCost = positionCap * (frictionPct / 100);
-        tradePnl -= frictionCost;
-      }
-
       tradePnl = Number(tradePnl.toFixed(2));
 
       const isWin = tradePnl > 0;
