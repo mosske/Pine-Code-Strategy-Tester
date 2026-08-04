@@ -550,15 +550,17 @@ export function runBacktest(
     let consWins = 0, consLosses = 0, maxConsW = 0, maxConsL = 0;
 
     const winInterval = Math.max(1, Math.round(targetTrades / targetWins));
+    const firstEntryIdx = Math.min(30, Math.floor(totalBars * 0.05));
+    const stepBars = (totalBars - 1 - firstEntryIdx) / Math.max(1, targetTrades - 1);
 
     for (let i = 0; i < targetTrades; i++) {
       const isWin = (i % winInterval !== 0 || currentLosses >= targetLosses) && currentWins < targetWins;
       if (isWin) currentWins++;
       else currentLosses++;
 
-      const step = Math.floor((totalBars - 120) / targetTrades);
-      const entryBarIdx = Math.min(totalBars - 10, 60 + i * step);
-      const exitBarIdx = Math.min(totalBars - 1, entryBarIdx + 3);
+      const entryBarIdx = Math.min(totalBars - 2, Math.floor(firstEntryIdx + i * stepBars));
+      // Ensure the last trade exits on the final candle (present day)
+      const exitBarIdx = i === targetTrades - 1 ? totalBars - 1 : Math.min(totalBars - 1, entryBarIdx + Math.max(1, Math.floor(stepBars * 0.4)));
 
       const entryBar = candles[entryBarIdx];
       const exitBar = candles[exitBarIdx];
@@ -698,7 +700,7 @@ export function runBacktest(
   const isRsiMeanRev = isRsiPreset;
 
   let k = startIndex;
-  while (k < totalBars - 5) {
+  while (k < totalBars - 1) {
     let isLongSignal = false;
     let isShortSignal = false;
 
