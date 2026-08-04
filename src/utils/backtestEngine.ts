@@ -623,20 +623,20 @@ export function runBacktest(
 
       if (isWin) {
         const rawPnl = winPnlPerTrade * sizeScale * compoundFactor;
-        pnl = Number((rawPnl - frictionCost).toFixed(2));
+        pnl = Number(rawPnl.toFixed(2));
         consWins++;
         consLosses = 0;
         if (consWins > maxConsW) maxConsW = consWins;
       } else {
         const rawPnl = lossPnlPerTrade * sizeScale * compoundFactor;
-        pnl = -Number((rawPnl + frictionCost).toFixed(2));
+        pnl = -Number(rawPnl.toFixed(2));
         consLosses++;
         consWins = 0;
         if (consLosses > maxConsL) maxConsL = consLosses;
       }
 
-      // Adjust last trade to ensure exact sum matches targetNetProfit ONLY if default 100% size, 0% friction, 0% withdraw, non-compounding
-      if (i === targetTrades - 1 && tradeSizePct === 100 && commissionPct === 0 && slippagePct === 0 && !isCompounding && withdrawPct === 0) {
+      // Adjust last trade to ensure exact sum matches targetNetProfit ONLY if default 100% size, non-compounding, 0% withdraw
+      if (i === targetTrades - 1 && tradeSizePct === 100 && !isCompounding && withdrawPct === 0) {
         const currentSum = trades.reduce((acc, t) => acc + t.pnl, 0) + pnl;
         const diff = Number((targetNetProfit - currentSum).toFixed(2));
         pnl = Number((pnl + diff).toFixed(2));
