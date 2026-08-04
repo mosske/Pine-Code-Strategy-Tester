@@ -209,8 +209,13 @@ app.post("/api/mcp/backtest", async (req, res) => {
     if (Array.isArray(inputs) && inputs.length > 0) {
       inputs.forEach((inp: any) => {
         if (inp.id && inp.value !== undefined) {
-          const regex = new RegExp(`(${inp.id}\\s*=\\s*input\\.[a-z]+\\()([0-9.]+)(,)`, 'gi');
-          mcpPineCode = mcpPineCode.replace(regex, `$1${inp.value}$3`);
+          const reg1 = new RegExp(`(${inp.id}\\s*=\\s*input(?:\\.[a-z]+)?\\(\\s*)([0-9.-]+)(\\s*,)`, 'i');
+          const reg2 = new RegExp(`(${inp.id}\\s*=\\s*input(?:\\.[a-z]+)?\\(\\s*defval\\s*=\\s*)([0-9.-]+)`, 'i');
+          if (reg1.test(mcpPineCode)) {
+            mcpPineCode = mcpPineCode.replace(reg1, `$1${inp.value}$3`);
+          } else if (reg2.test(mcpPineCode)) {
+            mcpPineCode = mcpPineCode.replace(reg2, `$1${inp.value}`);
+          }
         }
       });
     }
@@ -253,25 +258,53 @@ app.post("/api/mcp/backtest", async (req, res) => {
     const raw = backtestJson.result;
     const withdrawPctNum = Number(req.body.withdrawPct) || 0;
     const isCompoundingBool = Boolean(req.body.isCompounding);
-    const startCap = Number(raw.initialCapital || initialCapital) || 10000;
+    const tradeSizePctNum = req.body.tradeSizePct !== undefined && req.body.tradeSizePct !== null ? Number(req.body.tradeSizePct) : 100;
+    const commissionPctNum = Number(req.body.commissionPct) || 0;
+    const slippagePctNum = Number(req.body.slippagePct) || 0;
+    const startCap = Number(req.body.initialCapital || raw.initialCapital) || 10000;
 
     let runningEquity = startCap;
     let accumulatedWithdrawn = 0;
+    let maxPeak = startCap;
+    let maxDD = 0;
+    let maxDDPct = 0;
 
-    // Map MCP trades to TradeLogItem format and apply compounding / withdrawal adjustments if set
+    const sizeScale = tradeSizePctNum / 100;
+    const frictionPct = (commissionPctNum + slippagePctNum) * 2;
+
+    // Map MCP trades to TradeLogItem format and apply capital & costs scaling
     const rawTrades = raw.trades || [];
     const trades = rawTrades.map((t: any, idx: number) => {
-      let tradePnl = t.profit || 0;
+      let rawProfit = t.profit || 0;
 
-      if (isCompoundingBool && idx > 0 && startCap > 0) {
+      // 1. Scale trade profit by Trade Size (% of capital)
+      let tradePnl = rawProfit * sizeScale;
+
+      // 2. Apply compounding factor if enabled
+      if (isCompoundingBool && startCap > 0) {
         const compoundFactor = Math.max(0.1, runningEquity / startCap);
-        tradePnl = Number((tradePnl * compoundFactor).toFixed(2));
+        tradePnl = tradePnl * compoundFactor;
       }
+
+      // 3. Deduct extra friction (commission & slippage) if non-zero
+      if (frictionPct > 0) {
+        const positionCap = (isCompoundingBool ? runningEquity : startCap) * sizeScale;
+        const frictionCost = positionCap * (frictionPct / 100);
+        tradePnl -= frictionCost;
+      }
+
+      tradePnl = Number(tradePnl.toFixed(2));
 
       const isWin = tradePnl > 0;
       const withdrawnVal = (isWin && withdrawPctNum > 0) ? Number((tradePnl * (withdrawPctNum / 100)).toFixed(2)) : 0;
       accumulatedWithdrawn += withdrawnVal;
       runningEquity += (tradePnl - withdrawnVal);
+
+      if (runningEquity > maxPeak) maxPeak = runningEquity;
+      const dd = maxPeak - runningEquity;
+      const ddPct = maxPeak > 0 ? (dd / maxPeak) * 100 : 0;
+      if (dd > maxDD) maxDD = dd;
+      if (ddPct > maxDDPct) maxDDPct = ddPct;
 
       return {
         id: `mcp-trade-${idx + 1}`,
@@ -282,14 +315,14 @@ app.post("/api/mcp/backtest", async (req, res) => {
         exitTime: t.exitTime ? new Date(t.exitTime).toLocaleString() : `Bar ${t.exitBar || idx * 2 + 1}`,
         entryPrice: t.entryPrice || 0,
         exitPrice: t.exitPrice || 0,
-        size: t.qty || 1,
+        size: t.qty ? Number((t.qty * sizeScale).toFixed(4)) : 1,
         pnl: tradePnl,
-        pnlPercent: t.profitPct || 0,
+        pnlPercent: t.profitPct ? Number((t.profitPct * sizeScale).toFixed(2)) : 0,
         exitReason: t.exitReason || "Signal Exit",
       };
     });
 
-    const isAdjusted = withdrawPctNum > 0 || isCompoundingBool;
+    const isAdjusted = tradeSizePctNum !== 100 || withdrawPctNum > 0 || isCompoundingBool || frictionPct > 0;
     const finalEquity = isAdjusted ? Number(runningEquity.toFixed(2)) : Number(raw.finalEquity || startCap);
     const totalWithdrawn = isAdjusted ? Number(accumulatedWithdrawn.toFixed(2)) : Number(raw.totalWithdrawn || 0);
     const netProfit = isAdjusted ? Number(((runningEquity + accumulatedWithdrawn) - startCap).toFixed(2)) : Number(raw.netProfit || 0);

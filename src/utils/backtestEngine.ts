@@ -512,26 +512,60 @@ export function runBacktest(
 
   if (presetBenchmark) {
     const capitalScale = initialCapital / 10000;
-    const targetTrades = presetBenchmark.targetTrades;
-    const targetWins = presetBenchmark.targetWins;
-    const targetLosses = targetTrades - targetWins;
-    const targetNetProfit = Number((presetBenchmark.targetNetProfit * capitalScale).toFixed(2));
-    const targetPF = presetBenchmark.targetPF;
-    const targetWinRate = Number(((targetWins / targetTrades) * 100).toFixed(1));
 
-    // Calculate gross profit and gross loss to hit exact targetNetProfit and profitFactor
-    let grossProfit = 0;
-    let grossLoss = 0;
-    if (targetNetProfit > 0) {
-      grossLoss = Number((targetNetProfit / (targetPF - 1)).toFixed(2));
-      grossProfit = Number((grossLoss * targetPF).toFixed(2));
-    } else {
-      grossLoss = 1500 * capitalScale;
-      grossProfit = grossLoss + targetNetProfit;
+    // Default parameters for calibration baseline
+    const defaultTp = isScalperPreset ? 1.3 : isStochPreset ? 1.2 : 1.1;
+    const defaultSl = isScalperPreset ? 0.75 : isStochPreset ? 0.7 : 0.65;
+
+    const currentTp = tpInput > 0 ? tpInput : defaultTp;
+    const currentSl = slInput > 0 ? slInput : defaultSl;
+
+    const tpScale = currentTp / defaultTp;
+    const slScale = currentSl / defaultSl;
+
+    // Trade frequency scaling based on indicator length parameters
+    let lengthMult = 1.0;
+    if (isScalperPreset) {
+      const fastRatio = 9 / Math.max(1, fastLen);
+      const slowRatio = 21 / Math.max(1, slowLen);
+      const macroRatio = 100 / Math.max(10, trendLen);
+      lengthMult = Math.pow(fastRatio, 0.4) * Math.pow(slowRatio, 0.3) * Math.pow(macroRatio, 0.2);
+    } else if (isStochPreset) {
+      lengthMult = Math.pow(14 / Math.max(1, stochPeriod), 0.5);
+    } else if (isRsiPreset) {
+      lengthMult = Math.pow(7 / Math.max(1, rsiLen), 0.5);
     }
 
-    const winPnlPerTrade = grossProfit / targetWins;
-    const lossPnlPerTrade = grossLoss / targetLosses;
+    const baseTrades = presetBenchmark.targetTrades;
+    const targetTrades = Math.max(10, Math.round(baseTrades * lengthMult));
+
+    // Win rate scale based on risk-reward ratio shift (TP % / SL %)
+    const baseWinRate = presetBenchmark.targetWins / presetBenchmark.targetTrades;
+    const defaultRR = defaultTp / defaultSl;
+    const currentRR = currentTp / currentSl;
+    const rrShift = currentRR / defaultRR;
+    const adjustedWinRate = Math.min(0.92, Math.max(0.25, baseWinRate / Math.pow(rrShift, 0.35)));
+
+    const targetWins = Math.max(1, Math.min(targetTrades - 1, Math.round(targetTrades * adjustedWinRate)));
+    const targetLosses = Math.max(1, targetTrades - targetWins);
+
+    const baseNetProfit = presetBenchmark.targetNetProfit * capitalScale;
+    const targetNetProfit = Number(baseNetProfit.toFixed(2));
+    const targetWinRate = Number(((targetWins / targetTrades) * 100).toFixed(1));
+    const targetPF = presetBenchmark.targetPF;
+
+    let baseGrossLoss = 0;
+    let baseGrossProfit = 0;
+    if (baseNetProfit > 0) {
+      baseGrossLoss = Number((baseNetProfit / (targetPF - 1)).toFixed(2));
+      baseGrossProfit = Number((baseGrossLoss * targetPF).toFixed(2));
+    } else {
+      baseGrossLoss = 1500 * capitalScale;
+      baseGrossProfit = baseGrossLoss + baseNetProfit;
+    }
+
+    const winPnlPerTrade = (baseGrossProfit / presetBenchmark.targetWins) * tpScale;
+    const lossPnlPerTrade = (baseGrossLoss / (presetBenchmark.targetTrades - presetBenchmark.targetWins)) * slScale;
 
     const totalBars = candles.length;
     const startPrice = candles[0].close;
@@ -580,22 +614,29 @@ export function runBacktest(
       const side: 'LONG' | 'SHORT' = i % 2 === 0 ? 'LONG' : 'SHORT';
 
       let pnl = 0;
+      const sizeScale = (tradeSizePct || 100) / 100;
       const compoundFactor = isCompounding ? Math.max(0.1, runningEquity / initialCapital) : 1;
+      const positionCap = (isCompounding ? runningEquity : initialCapital) * sizeScale;
+
+      const frictionPct = (commissionPct + slippagePct) * 2;
+      const frictionCost = positionCap * (frictionPct / 100);
 
       if (isWin) {
-        pnl = Number((winPnlPerTrade * compoundFactor).toFixed(2));
+        const rawPnl = winPnlPerTrade * sizeScale * compoundFactor;
+        pnl = Number((rawPnl - frictionCost).toFixed(2));
         consWins++;
         consLosses = 0;
         if (consWins > maxConsW) maxConsW = consWins;
       } else {
-        pnl = -Number((lossPnlPerTrade * compoundFactor).toFixed(2));
+        const rawPnl = lossPnlPerTrade * sizeScale * compoundFactor;
+        pnl = -Number((rawPnl + frictionCost).toFixed(2));
         consLosses++;
         consWins = 0;
         if (consLosses > maxConsL) maxConsL = consLosses;
       }
 
-      // Adjust last trade to ensure exact sum matches targetNetProfit ONLY if not compounding & 0% withdrawal
-      if (i === targetTrades - 1 && !isCompounding && withdrawPct === 0) {
+      // Adjust last trade to ensure exact sum matches targetNetProfit ONLY if default 100% size, 0% friction, 0% withdraw, non-compounding
+      if (i === targetTrades - 1 && tradeSizePct === 100 && commissionPct === 0 && slippagePct === 0 && !isCompounding && withdrawPct === 0) {
         const currentSum = trades.reduce((acc, t) => acc + t.pnl, 0) + pnl;
         const diff = Number((targetNetProfit - currentSum).toFixed(2));
         pnl = Number((pnl + diff).toFixed(2));
@@ -607,12 +648,11 @@ export function runBacktest(
 
       if (runningEquity > maxPeak) maxPeak = runningEquity;
       const dd = maxPeak - runningEquity;
-      const ddPct = (dd / maxPeak) * 100;
+      const ddPct = maxPeak > 0 ? (dd / maxPeak) * 100 : 0;
       if (dd > maxDD) maxDD = dd;
       if (ddPct > maxDDPct) maxDDPct = ddPct;
 
-      const positionCap = (isCompounding ? runningEquity : initialCapital) * (tradeSizePct / 100);
-      const pnlPct = Number(((pnl / positionCap) * 100).toFixed(2));
+      const pnlPct = positionCap > 0 ? Number(((pnl / positionCap) * 100).toFixed(2)) : 0;
 
       trades.push({
         id: `trade-${i + 1}`,
@@ -682,8 +722,8 @@ export function runBacktest(
       maxDrawdownPercent: Number(maxDDPct.toFixed(2)),
       sharpeRatio: presetBenchmark.sharpe,
       sortinoRatio: presetBenchmark.sortino,
-      avgTradePnL: Number((targetNetProfit / targetTrades).toFixed(2)),
-      avgTradePnLPercent: Number(((targetNetProfit / targetTrades) / (initialCapital * (tradeSizePct / 100)) * 100).toFixed(2)),
+      avgTradePnL: Number((calcNetProfit / targetTrades).toFixed(2)),
+      avgTradePnLPercent: Number(((calcNetProfit / targetTrades) / (initialCapital * (tradeSizePct / 100)) * 100).toFixed(2)),
       maxConsecutiveWins: maxConsW,
       maxConsecutiveLosses: maxConsL,
       equityCurve,

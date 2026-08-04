@@ -80,7 +80,7 @@ export default function App() {
     return getStoredValue('pinestudio_slippage_pct', 0.02);
   });
   const [tradeSizePct, setTradeSizePct] = useState<number>(() => {
-    return getStoredValue('pinestudio_trade_size_pct', 20);
+    return getStoredValue('pinestudio_trade_size_pct', 100);
   });
   const [isCompounding, setIsCompounding] = useState<boolean>(() => {
     return getStoredValue('pinestudio_is_compounding', false);
@@ -242,10 +242,10 @@ export default function App() {
     }
   }, [candles, inputs, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, addToast]);
 
-  // Re-run backtest whenever strategy, asset, timeframe, period, or key account parameters change
+  // Re-run backtest whenever strategy, asset, timeframe, period, inputs, or key account parameters change
   useEffect(() => {
     handleRunBacktest(false);
-  }, [selectedStrategyId, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct]);
+  }, [selectedStrategyId, pineCode, selectedAsset, selectedTimeframe, selectedPeriod, initialCapital, commissionPct, slippagePct, tradeSizePct, isCompounding, withdrawPct, inputs]);
 
   // Parameter Change Handler (User edits variables for custom testing)
   const handleInputChange = (id: string, value: any) => {
