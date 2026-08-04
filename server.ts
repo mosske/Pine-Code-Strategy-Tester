@@ -251,39 +251,68 @@ app.post("/api/mcp/backtest", async (req, res) => {
     }
 
     const raw = backtestJson.result;
+    const withdrawPctNum = Number(req.body.withdrawPct) || 0;
+    const isCompoundingBool = Boolean(req.body.isCompounding);
+    const startCap = Number(raw.initialCapital || initialCapital) || 10000;
 
-    // Map MCP trades to TradeLogItem format
-    const trades = (raw.trades || []).map((t: any, idx: number) => ({
-      id: `mcp-trade-${idx + 1}`,
-      type: (t.side || t.type || "LONG").toUpperCase() === "SHORT" ? "SHORT" : "LONG",
-      entryIndex: t.entryBar || idx * 2,
-      exitIndex: t.exitBar || idx * 2 + 1,
-      entryTime: t.entryTime ? new Date(t.entryTime).toLocaleString() : `Bar ${t.entryBar || idx * 2}`,
-      exitTime: t.exitTime ? new Date(t.exitTime).toLocaleString() : `Bar ${t.exitBar || idx * 2 + 1}`,
-      entryPrice: t.entryPrice || 0,
-      exitPrice: t.exitPrice || 0,
-      size: t.qty || 1,
-      pnl: t.profit || 0,
-      pnlPercent: t.profitPct || 0,
-      exitReason: t.exitReason || "Signal Exit",
-    }));
+    let runningEquity = startCap;
+    let accumulatedWithdrawn = 0;
+
+    // Map MCP trades to TradeLogItem format and apply compounding / withdrawal adjustments if set
+    const rawTrades = raw.trades || [];
+    const trades = rawTrades.map((t: any, idx: number) => {
+      let tradePnl = t.profit || 0;
+
+      if (isCompoundingBool && idx > 0 && startCap > 0) {
+        const compoundFactor = Math.max(0.1, runningEquity / startCap);
+        tradePnl = Number((tradePnl * compoundFactor).toFixed(2));
+      }
+
+      const isWin = tradePnl > 0;
+      const withdrawnVal = (isWin && withdrawPctNum > 0) ? Number((tradePnl * (withdrawPctNum / 100)).toFixed(2)) : 0;
+      accumulatedWithdrawn += withdrawnVal;
+      runningEquity += (tradePnl - withdrawnVal);
+
+      return {
+        id: `mcp-trade-${idx + 1}`,
+        type: (t.side || t.type || "LONG").toUpperCase() === "SHORT" ? "SHORT" : "LONG",
+        entryIndex: t.entryBar || idx * 2,
+        exitIndex: t.exitBar || idx * 2 + 1,
+        entryTime: t.entryTime ? new Date(t.entryTime).toLocaleString() : `Bar ${t.entryBar || idx * 2}`,
+        exitTime: t.exitTime ? new Date(t.exitTime).toLocaleString() : `Bar ${t.exitBar || idx * 2 + 1}`,
+        entryPrice: t.entryPrice || 0,
+        exitPrice: t.exitPrice || 0,
+        size: t.qty || 1,
+        pnl: tradePnl,
+        pnlPercent: t.profitPct || 0,
+        exitReason: t.exitReason || "Signal Exit",
+      };
+    });
+
+    const isAdjusted = withdrawPctNum > 0 || isCompoundingBool;
+    const finalEquity = isAdjusted ? Number(runningEquity.toFixed(2)) : Number(raw.finalEquity || startCap);
+    const totalWithdrawn = isAdjusted ? Number(accumulatedWithdrawn.toFixed(2)) : Number(raw.totalWithdrawn || 0);
+    const netProfit = isAdjusted ? Number(((runningEquity + accumulatedWithdrawn) - startCap).toFixed(2)) : Number(raw.netProfit || 0);
+    const netProfitPercent = isAdjusted ? Number(((netProfit / startCap) * 100).toFixed(2)) : Number(raw.netProfitPct || 0);
 
     // Map equity curve
-    const equityCurve = (raw.equityCurve || []).map((eq: any, idx: number) => ({
+    const rawEquityCurve = raw.equityCurve || [];
+    const equityCurve = rawEquityCurve.map((eq: any, idx: number) => ({
       index: idx,
       time: eq.time ? new Date(eq.time).toLocaleDateString() : `Point ${idx}`,
-      equity: eq.equity || initialCapital,
-      benchmark: eq.benchmark || initialCapital,
+      equity: eq.equity || startCap,
+      benchmark: eq.benchmark || startCap,
       drawdownPercent: eq.drawdownPct || 0,
     }));
 
     res.json({
       success: true,
       isMcpEngine: true,
-      initialCapital: raw.initialCapital || initialCapital,
-      finalEquity: raw.finalEquity || initialCapital,
-      netProfit: raw.netProfit || 0,
-      netProfitPercent: raw.netProfitPct || 0,
+      initialCapital: startCap,
+      finalEquity,
+      netProfit,
+      netProfitPercent,
+      totalWithdrawn,
       buyHoldReturnPercent: raw.buyHoldReturnPct || 0,
       totalTrades: raw.totalTrades || 0,
       winningTrades: raw.winningTrades || 0,

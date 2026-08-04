@@ -148,10 +148,12 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
             <Wallet className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-xl font-extrabold font-mono text-slate-100">
-            ${(result.initialCapital + result.netProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${result.finalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-xs text-slate-500 mt-1 font-mono truncate">
-            Principal (${result.initialCapital.toLocaleString()}) + Profit
+            {result.totalWithdrawn > 0
+              ? `Trading Account (+$${result.totalWithdrawn.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} withdrawn)`
+              : `Principal ($${result.initialCapital.toLocaleString()}) + Net PnL`}
           </div>
         </div>
 

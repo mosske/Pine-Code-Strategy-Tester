@@ -580,26 +580,28 @@ export function runBacktest(
       const side: 'LONG' | 'SHORT' = i % 2 === 0 ? 'LONG' : 'SHORT';
 
       let pnl = 0;
+      const compoundFactor = isCompounding ? Math.max(0.1, runningEquity / initialCapital) : 1;
+
       if (isWin) {
-        pnl = Number(winPnlPerTrade.toFixed(2));
+        pnl = Number((winPnlPerTrade * compoundFactor).toFixed(2));
         consWins++;
         consLosses = 0;
         if (consWins > maxConsW) maxConsW = consWins;
       } else {
-        pnl = -Number(lossPnlPerTrade.toFixed(2));
+        pnl = -Number((lossPnlPerTrade * compoundFactor).toFixed(2));
         consLosses++;
         consWins = 0;
         if (consLosses > maxConsL) maxConsL = consLosses;
       }
 
-      // Adjust last trades to ensure exact sum matches targetNetProfit
-      if (i === targetTrades - 1) {
+      // Adjust last trade to ensure exact sum matches targetNetProfit ONLY if not compounding & 0% withdrawal
+      if (i === targetTrades - 1 && !isCompounding && withdrawPct === 0) {
         const currentSum = trades.reduce((acc, t) => acc + t.pnl, 0) + pnl;
         const diff = Number((targetNetProfit - currentSum).toFixed(2));
         pnl = Number((pnl + diff).toFixed(2));
       }
 
-      const withdrawVal = isWin ? Number((pnl * (withdrawPct / 100)).toFixed(2)) : 0;
+      const withdrawVal = isWin && withdrawPct > 0 ? Number((pnl * (withdrawPct / 100)).toFixed(2)) : 0;
       accumulatedWithdrawn += withdrawVal;
       runningEquity += (pnl - withdrawVal);
 
@@ -609,7 +611,8 @@ export function runBacktest(
       if (dd > maxDD) maxDD = dd;
       if (ddPct > maxDDPct) maxDDPct = ddPct;
 
-      const pnlPct = Number(((pnl / (initialCapital * (tradeSizePct / 100))) * 100).toFixed(2));
+      const positionCap = (isCompounding ? runningEquity : initialCapital) * (tradeSizePct / 100);
+      const pnlPct = Number(((pnl / positionCap) * 100).toFixed(2));
 
       trades.push({
         id: `trade-${i + 1}`,
@@ -622,7 +625,7 @@ export function runBacktest(
         exitPrice: exitBar.close,
         stopLossPrice: side === 'LONG' ? Number((entryBar.close * (1 - slPct)).toFixed(decimals)) : Number((entryBar.close * (1 + slPct)).toFixed(decimals)),
         takeProfitPrice: side === 'LONG' ? Number((entryBar.close * (1 + tpPct)).toFixed(decimals)) : Number((entryBar.close * (1 - tpPct)).toFixed(decimals)),
-        size: Number(((initialCapital * (tradeSizePct / 100)) / entryBar.close).toFixed(4)),
+        size: Number((positionCap / entryBar.close).toFixed(4)),
         pnl,
         pnlPercent: pnlPct,
         exitReason: isWin ? 'Take Profit' : 'Stop Loss',
@@ -653,6 +656,8 @@ export function runBacktest(
     }
 
     const finalEquity = Number(runningEquity.toFixed(2));
+    const calcNetProfit = Number(((runningEquity + accumulatedWithdrawn) - initialCapital).toFixed(2));
+    const calcNetProfitPct = Number(((calcNetProfit / initialCapital) * 100).toFixed(2));
     const buyHoldReturnPercent = Number((((candles[candles.length - 1].close - startPrice) / startPrice) * 100).toFixed(2));
 
     const indicators: IndicatorOverlay[] = [
@@ -664,8 +669,8 @@ export function runBacktest(
     return {
       initialCapital,
       finalEquity,
-      netProfit: targetNetProfit,
-      netProfitPercent: Number(((targetNetProfit / initialCapital) * 100).toFixed(2)),
+      netProfit: calcNetProfit,
+      netProfitPercent: calcNetProfitPct,
       totalWithdrawn: Number(accumulatedWithdrawn.toFixed(2)),
       buyHoldReturnPercent,
       totalTrades: targetTrades,
@@ -849,8 +854,8 @@ export function runBacktest(
       const frictionPct = (commissionPct + slippagePct) * 2;
       const netPnlPct = Number((priceMovePct - frictionPct).toFixed(2));
 
-      const sizingCapital = isCompounding ? currentEquity : initialCapital;
-      const effectiveTradeSize = Math.max(tradeSizePct, 35);
+      const sizingCapital = isCompounding ? Math.max(100, currentEquity) : initialCapital;
+      const effectiveTradeSize = tradeSizePct || 20;
       const positionCap = sizingCapital * (effectiveTradeSize / 100);
       const netPnlVal = Number((positionCap * (netPnlPct / 100)).toFixed(2));
 
