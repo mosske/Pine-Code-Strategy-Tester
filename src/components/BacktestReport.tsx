@@ -45,24 +45,34 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
 
   const isProfitable = result.netProfit >= 0;
 
-  // Compute maximum consecutive winning and losing streaks
-  const maxConsWins = result.maxConsecutiveWins ?? (() => {
-    let maxW = 0, curr = 0;
-    result.trades.forEach(t => {
-      if (t.pnl >= 0) { curr++; if (curr > maxW) maxW = curr; }
-      else { curr = 0; }
-    });
-    return maxW;
-  })();
+  // Compute maximum consecutive winning and losing streaks from actual trade history
+  let maxConsWins = result.maxConsecutiveWins || 0;
+  let maxConsLosses = result.maxConsecutiveLosses || 0;
 
-  const maxConsLosses = result.maxConsecutiveLosses ?? (() => {
-    let maxL = 0, curr = 0;
-    result.trades.forEach(t => {
-      if (t.pnl < 0) { curr++; if (curr > maxL) maxL = curr; }
-      else { curr = 0; }
+  if (result.trades && result.trades.length > 0) {
+    let computedWins = 0;
+    let computedLosses = 0;
+    let currWins = 0;
+    let currLosses = 0;
+
+    result.trades.forEach((t) => {
+      if (t.pnl > 0) {
+        currWins++;
+        currLosses = 0;
+        if (currWins > computedWins) computedWins = currWins;
+      } else if (t.pnl < 0) {
+        currLosses++;
+        currWins = 0;
+        if (currLosses > computedLosses) computedLosses = currLosses;
+      } else {
+        currWins = 0;
+        currLosses = 0;
+      }
     });
-    return maxL;
-  })();
+
+    maxConsWins = computedWins;
+    maxConsLosses = computedLosses;
+  }
 
   return (
     <div id="backtest-report-container" className="flex flex-col gap-6">
@@ -288,11 +298,11 @@ export const BacktestReport: React.FC<BacktestReportProps> = ({
 
             <div className="flex items-center gap-2 text-xs font-mono">
               <span className="px-2.5 py-1.5 bg-slate-950/80 border border-emerald-900/60 rounded-lg text-emerald-400 flex items-center gap-1.5 shadow-sm">
-                <span className="text-slate-400 font-sans text-[11px]">Max Cons. Winners:</span>
+                <span className="text-slate-400 font-sans text-[11px]">Max Consecutive Winners:</span>
                 <span className="font-extrabold text-emerald-300">{maxConsWins}</span>
               </span>
               <span className="px-2.5 py-1.5 bg-slate-950/80 border border-rose-900/60 rounded-lg text-rose-400 flex items-center gap-1.5 shadow-sm">
-                <span className="text-slate-400 font-sans text-[11px]">Max Cons. Losers:</span>
+                <span className="text-slate-400 font-sans text-[11px]">Max Consecutive Losers:</span>
                 <span className="font-extrabold text-rose-300">{maxConsLosses}</span>
               </span>
             </div>

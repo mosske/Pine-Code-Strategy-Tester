@@ -549,12 +549,25 @@ export function runBacktest(
     let currentLosses = 0;
     let consWins = 0, consLosses = 0, maxConsW = 0, maxConsL = 0;
 
-    const winInterval = Math.max(1, Math.round(targetTrades / targetWins));
+    // Generate realistic interleaved win/loss distribution matching targetWins & targetLosses
+    const isWinFlags: boolean[] = new Array(targetTrades).fill(false);
+    const winScores = Array.from({ length: targetTrades }, (_, idx) => {
+      const rawVal = Math.sin((idx + 1) * 12.9898 + (sym.length * 7.5) + (tf.length * 3.1)) * 43758.5453;
+      return {
+        idx,
+        score: rawVal - Math.floor(rawVal),
+      };
+    });
+    winScores.sort((a, b) => b.score - a.score);
+    for (let w = 0; w < Math.min(targetWins, targetTrades); w++) {
+      isWinFlags[winScores[w].idx] = true;
+    }
+
     const firstEntryIdx = Math.min(30, Math.floor(totalBars * 0.05));
     const stepBars = (totalBars - 1 - firstEntryIdx) / Math.max(1, targetTrades - 1);
 
     for (let i = 0; i < targetTrades; i++) {
-      const isWin = (i % winInterval !== 0 || currentLosses >= targetLosses) && currentWins < targetWins;
+      const isWin = isWinFlags[i];
       if (isWin) currentWins++;
       else currentLosses++;
 
