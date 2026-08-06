@@ -120,7 +120,7 @@ export default function App() {
     return getStoredValue('pinestudio_slippage_pct', 0.02);
   });
   const [tradeSizePct, setTradeSizePct] = useState<number>(() => {
-    return getStoredValue('pinestudio_trade_size_pct', 100);
+    return getStoredValue('pinestudio_trade_size_pct', 20);
   });
   const [isCompounding, setIsCompounding] = useState<boolean>(() => {
     return getStoredValue('pinestudio_is_compounding', false);
@@ -404,8 +404,15 @@ export default function App() {
     localStorage.removeItem(`pinestudio_inputs_${found.id}`);
     localStorage.removeItem('pinestudio_inputs');
 
+    setTradeSizePct(20);
+    setInitialCapital(10000);
+    setCommissionPct(0.075);
+    setSlippagePct(0.02);
+    setIsCompounding(false);
+    setWithdrawPct(0);
+
     handleSelectPreset(found, found.defaultAsset);
-    addToast('Reset to Defaults', `Variables restored to recommended strategy defaults`, 'reset');
+    addToast('Reset to Defaults', `Variables & capital settings restored to recommended strategy defaults`, 'reset');
   };
 
   // AI Generated Strategy Apply Handler

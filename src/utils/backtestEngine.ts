@@ -614,7 +614,9 @@ export function runBacktest(
       const side: 'LONG' | 'SHORT' = i % 2 === 0 ? 'LONG' : 'SHORT';
 
       let pnl = 0;
-      const sizeScale = (tradeSizePct || 100) / 100;
+      const effectiveTradeSize = tradeSizePct ?? 20;
+      const sizeScale = effectiveTradeSize / 100;
+      const relativeSizeScale = effectiveTradeSize / 20;
       const compoundFactor = isCompounding ? Math.max(0.1, runningEquity / initialCapital) : 1;
       const positionCap = (isCompounding ? runningEquity : initialCapital) * sizeScale;
 
@@ -622,21 +624,21 @@ export function runBacktest(
       const frictionCost = positionCap * (frictionPct / 100);
 
       if (isWin) {
-        const rawPnl = winPnlPerTrade * sizeScale * compoundFactor;
+        const rawPnl = winPnlPerTrade * relativeSizeScale * compoundFactor;
         pnl = Number(rawPnl.toFixed(2));
         consWins++;
         consLosses = 0;
         if (consWins > maxConsW) maxConsW = consWins;
       } else {
-        const rawPnl = lossPnlPerTrade * sizeScale * compoundFactor;
+        const rawPnl = lossPnlPerTrade * relativeSizeScale * compoundFactor;
         pnl = -Number(rawPnl.toFixed(2));
         consLosses++;
         consWins = 0;
         if (consLosses > maxConsL) maxConsL = consLosses;
       }
 
-      // Adjust last trade to ensure exact sum matches targetNetProfit ONLY if default 100% size, non-compounding, 0% withdraw
-      if (i === targetTrades - 1 && tradeSizePct === 100 && !isCompounding && withdrawPct === 0) {
+      // Adjust last trade to ensure exact sum matches targetNetProfit at standard baseline trade size (20%)
+      if (i === targetTrades - 1 && effectiveTradeSize === 20 && !isCompounding && withdrawPct === 0) {
         const currentSum = trades.reduce((acc, t) => acc + t.pnl, 0) + pnl;
         const diff = Number((targetNetProfit - currentSum).toFixed(2));
         pnl = Number((pnl + diff).toFixed(2));
